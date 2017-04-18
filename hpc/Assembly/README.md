@@ -43,6 +43,8 @@ for d in Pd Pf ; do qsub ${d}_busco_job.sh ; done
 
 # 05_transrate
 Use transrate from Software folder because it has modification for avoiding it to crash.
+To get permission:
+ chmod +x -R /homes/27/jc275567/Software/transrate-1.0.1-modified/
 
 To generate transrate:
 for d in Pd Pf ; do sed s/DUMMY/$d/g 05_transrate.sh > ${d}_transrate_job.sh ; done

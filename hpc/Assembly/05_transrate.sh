@@ -13,7 +13,7 @@
 
 cd /homes/27/jc275567/Porites_competition/hpc/Assembly/DUMMY_trinity
 
-/homes/27/jc275567/Software/transrate-1.0.1-modified/transrate -o DUMMY_transrate -t 16 \
+/homes/27/jc275567/Software/transrate-1.0.1-modified/./transrate -o DUMMY_transrate -t 16 \
 -a DUMMY_trinity.fasta \
 --left insilico_read_normalization/left.norm.fq
 --right insilico_read_normalization/right.norm.fq
