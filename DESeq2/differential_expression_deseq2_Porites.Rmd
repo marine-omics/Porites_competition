@@ -1,0 +1,203 @@
+---
+title: "Coral Competition_Porites"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(cache=TRUE)
+options(width = 60)
+
+library(knitr)
+library(DESeq2)
+library(stringr)
+library(xlsx)
+library(tidyverse)
+library(ggrepel)
+library(pheatmap)
+```
+
+First we prepare the data.  This involves reading in a counts matrix from corset.  Then we extract the sample names from the columns and match those to conditions in an excel file that describes the experimental conditions for each sample.
+
+```{r prepdata, include=FALSE}
+
+# Obtained with `corset_alldifferent_genomics1.03.sh`
+# First step to explore data: Using all samples
+counts <- read_tsv("raw_data/03-counts.txt") %>% column_to_rownames(var="X1") %>% as.matrix()
+
+sample_data <- read.csv("raw_data/Samples_data.csv",strip.white = T)
+names(sample_data)
+
+colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","PdvsL_Other")
+head(sample_data)
+
+sample_data_row_order <- match(colnames(counts),sample_data$ID)
+
+#Now we use DESeq2 to run the differential expression analyses
+# This sets up the DESeq model
+dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data[sample_data_row_order,],design = ~  treat+ HardCoral)
+
+# Now we run the actual DESeq fitting process. 
+# We do this twice. The first is a standard fit that will allow wald tests between specific conditions. 
+# The second is a likelihood ratio test (LRT) fit where we also fit a NULL model (without HardCoral) and compare it to the full model
+##NOTE: is there a way to save dds ans ddslrt results?
+if ( file.exists("data/dds.rds")){
+  dds <- read_rds("data/dds.rds")
+} else {
+  dds <- DESeq(dds)
+  write_rds(dds,"data/dds.rds")
+}
+
+if ( file.exists("data/ddslrt.rds")){
+  ddslrt <- read_rds("data/ddslrt.rds")
+} else {
+  ddslrt <- DESeq(dds,test = "LRT",reduced = ~ 1 + HardCoral)
+  write_rds(ddslrt,"data/ddslrt.rds")
+}
+
+# For each of the fits we extract results tables. 
+res_dds<- results(dds)
+resOrdered_dds <- as.data.frame(res_dds[order(res_dds$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) # same as contrast Pd, Pf
+
+# The LRT there is just one results table because it is a global test across all conditions
+res_lrt <- results(ddslrt)
+
+# For the standard fit we extract specific comparisons against control and treatment
+res_T <- results(dds,contrast = c("treat","T","C"))
+#Table DE genes when comparing Treatment and Control
+resOrdered_T<- as.data.frame(res_T[order(res_T$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_P <- results(dds,contrast = c("HardCoral","Pd","Pf"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_P <- as.data.frame(res_P[order(res_P$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+####### Principal componet analysis #########
+
+vsd <- varianceStabilizingTransformation(dds, blind=FALSE)
+pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+  ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group)) + xlab("xlabel") + ylab("customylabel") + theme(text = element_text(size=20))
+```
+
+# 2. Without PdLd as outlier, same model
+```{r without PdLd}
+counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
+
+sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),]
+
+
+# This sets up the DESeq model
+dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  treat+ HardCoral)
+
+# Now we run the actual DESeq fitting process. 
+dds2 <- DESeq(dds2)
+
+ddslrt2 <- DESeq(dds2,test = "LRT",reduced = ~ 1 + HardCoral)
+
+# For each of the fits we extract results tables. 
+res_dds2<- results(dds2)
+resOrdered_dds2 <- as.data.frame(res_dds2[order(res_dds2$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) # same as contrast Pd, Pf
+
+# The LRT there is just one results table because it is a global test across all conditions
+res_lrt2 <- results(ddslrt2)
+
+# For the standard fit we extract specific comparisons against control and treatment
+res_T2 <- results(dds2,contrast = c("treat","T","C"))
+#Table DE genes when comparing Treatment and Control
+resOrdered_T2<- as.data.frame(res_T2[order(res_T2$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_P2 <- results(dds2,contrast = c("HardCoral","Pd","Pf"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_P2 <- as.data.frame(res_P2[order(res_P2$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+####### Principal componet analysis #########
+
+vsd2 <- varianceStabilizingTransformation(dds2, blind=FALSE)
+pca_data <- plotPCA(vsd2,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+  ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group))  + theme(text = element_text(size=20))
+```
+# 3. Changing model with SoftCoralControl with all samples
+```{r, model : SoftCoralControl}
+
+# This sets up the DESeq model
+dds3 <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data,design = ~  HardCoral+ SoftCoralControl)
+
+# Now we run the actual DESeq fitting process. 
+dds3 <- DESeq(dds3)
+
+ddslrt3 <- DESeq(dds3,test = "LRT",reduced = ~ 1 + HardCoral)
+
+res_dds3<- results(dds3)
+resOrdered_dds3 <- as.data.frame(res_dds3[order(res_dds3$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) #
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_P3 <- results(dds3,contrast = c("HardCoral","Pd","Pf"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_P3 <- as.data.frame(res_P3[order(res_P3$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+####### Principal componet analysis #########
+
+vsd3 <- varianceStabilizingTransformation(dds3, blind=FALSE)
+pca_data <- plotPCA(vsd3,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+  ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group)) + xlab("xlabel") + ylab("customylabel") + theme(text = element_text(size=20))
+```
+
+#4. Changing model with SoftCoralControl without PdLd
+
+```{r, model : SoftCoralControl}
+
+# This sets up the DESeq model
+dds4 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  HardCoral+ SoftCoralControl)
+
+# Now we run the actual DESeq fitting process. 
+dds4 <- DESeq(dds4)
+
+ddslrt4 <- DESeq(dds4,test = "LRT",reduced = ~ 1 + HardCoral)
+
+res_dds4<- results(dds4)
+resOrdered_dds4 <- as.data.frame(res_dds4[order(res_dds3$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) #
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_P4 <- results(dds4,contrast = c("HardCoral","Pd","Pf"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_P4 <- as.data.frame(res_P4[order(res_P4$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+####### Principal componet analysis #########
+
+vsd4 <- varianceStabilizingTransformation(dds4, blind=FALSE)
+pca_data <- plotPCA(vsd4,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+  ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group)) + theme(text = element_text(size=20))
+```
+
+#5. Changing model with SoftCoralControl + PdvsL_Other without PdLd
+
+```{r, model : SoftCoralControl}
+
+# This sets up the DESeq model
+dds5 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  HardCoral+ SoftCoralControl + PdvsL_Other)
+
+# Now we run the actual DESeq fitting process. 
+dds5 <- DESeq(dds5)
+
+ddslrt5 <- DESeq(dds5,test = "LRT",reduced = ~ 1 + HardCoral)
+res_dds5<- results(dds5)
+resOrdered_dds5<- as.data.frame(res_dds5[order(res_dds4$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) #
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_P5 <- results(dds5,contrast = c("HardCoral","Pd","Pf"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_P5 <- as.data.frame(res_P5[order(res_P5$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+# For the standard fit we extract specific comparisons against Pd and Pf
+res_O <- results(dds5,contrast = c("PdvsL_Other","Pd","O"))
+#Table DE genes when comparing Pd and Pf
+resOrdered_O <- as.data.frame(res_O[order(res_O$padj),]) %>% add_rownames("cluster_id")%>% filter(padj<0.1)
+
+
+####### Principal componet analysis #########
+
+vsd5 <- varianceStabilizingTransformation(dds4, blind=FALSE)
+pca_data <- plotPCA(vsd5,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+  ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group)) + theme(text = element_text(size=20))
+```
