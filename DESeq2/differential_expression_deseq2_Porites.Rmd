@@ -42,7 +42,12 @@ dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data[sample_data
 # We do this twice. The first is a standard fit that will allow wald tests between specific conditions. 
 # The second is a likelihood ratio test (LRT) fit where we also fit a NULL model (without HardCoral) and compare it to the full model
 ##NOTE: is there a way to save dds ans ddslrt results?
-dds <- DESeq(dds)
+if ( file.exists("data/dds.rds")){
+  dds <- read_rds("data/dds.rds")
+} else {
+  dds <- DESeq(dds)
+  write_rds(dds,"data/dds.rds")
+}
 
 ddslrt <- DESeq(dds,test = "LRT",reduced = ~ 1 + HardCoral)
 
