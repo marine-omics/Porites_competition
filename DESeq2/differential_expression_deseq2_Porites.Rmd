@@ -12,10 +12,8 @@ options(width = 60)
 library(knitr)
 library(DESeq2)
 library(stringr)
-library(dplyr)
-library(tidyr)
 library(xlsx)
-library(ggplot2)
+library(tidyverse)
 library(ggrepel)
 library(pheatmap)
 ```
@@ -24,14 +22,10 @@ First we prepare the data.  This involves reading in a counts matrix from corset
 
 ```{r prepdata, include=FALSE}
 
-# Obtained with corset -d 0.5 *.bam
+# Obtained with `corset_alldifferent_genomics1.03.sh`
 # First step to explore data: Using all samples
-counts <- read.delim("raw_data/03-counts.txt",stringsAsFactors = FALSE)
-names(counts)
-cluster_names <- counts[,1]
-counts <- as.matrix(counts[,-1])
-rownames(counts) <- cluster_names
-names(counts)
+counts <- read_tsv("raw_data/03-counts.txt") %>% column_to_rownames(var="X1") %>% as.matrix()
+
 coldata <- data.frame(ID=str_match(colnames(counts),"(.*)")[,2],stringsAsFactors = FALSE)
 coldata <- coldata %>% cbind(row=1:nrow(coldata))
 head(coldata)
