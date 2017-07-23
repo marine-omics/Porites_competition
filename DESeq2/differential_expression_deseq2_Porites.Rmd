@@ -49,7 +49,12 @@ if ( file.exists("data/dds.rds")){
   write_rds(dds,"data/dds.rds")
 }
 
-ddslrt <- DESeq(dds,test = "LRT",reduced = ~ 1 + HardCoral)
+if ( file.exists("data/ddslrt.rds")){
+  ddslrt <- read_rds("data/ddslrt.rds")
+} else {
+  ddslrt <- DESeq(dds,test = "LRT",reduced = ~ 1 + HardCoral)
+  write_rds(ddslrt,"data/ddslrt.rds")
+}
 
 # For each of the fits we extract results tables. 
 res_dds<- results(dds)
@@ -77,16 +82,7 @@ pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TR
 
 # 2. Without PdLd as outlier, same model
 ```{r without PdLd}
-counts2 <- read.delim("raw_data/03-counts.txt",stringsAsFactors = FALSE)
-names(counts2)
-counts2<- counts2 %>% select("X","PdLa" ,"PdLb", "PdLc" , "PdLe" ,"PdC", "PfLa", "PfLb", "PfLc" ,"PfLd", "PfLe", "PfC")
-cluster_names <- counts2[,1]
-counts2 <- as.matrix(counts2[,-1])
-rownames(counts2) <- cluster_names
-names(counts2)
-coldata2 <- data.frame(ID=str_match(colnames(counts2),"(.*)")[,2],stringsAsFactors = FALSE)
-coldata2 <- coldata2 %>% cbind(row=1:nrow(coldata2))
-head(coldata2)
+counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
 
 sample_data2 <- read.csv("raw_data/Samples_data2.csv",strip.white = T)
 names(sample_data2)
