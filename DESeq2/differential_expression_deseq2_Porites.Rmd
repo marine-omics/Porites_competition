@@ -23,7 +23,6 @@ library(pheatmap)
 First we prepare the data.  This involves reading in a counts matrix from corset.  Then we extract the sample names from the columns and match those to conditions in an excel file that describes the experimental conditions for each sample.
 
 ```{r prepdata, include=FALSE}
-setwd("Dropbox/natalia-competition/Porites_competition/DESeq2")
 
 # Obtained with corset -d 0.5 *.bam
 # First step to explore data: Using all samples
