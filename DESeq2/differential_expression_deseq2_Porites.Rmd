@@ -26,23 +26,17 @@ First we prepare the data.  This involves reading in a counts matrix from corset
 # First step to explore data: Using all samples
 counts <- read_tsv("raw_data/03-counts.txt") %>% column_to_rownames(var="X1") %>% as.matrix()
 
-coldata <- data.frame(ID=str_match(colnames(counts),"(.*)")[,2],stringsAsFactors = FALSE)
-coldata <- coldata %>% cbind(row=1:nrow(coldata))
-head(coldata)
-
 sample_data <- read.csv("raw_data/Samples_data.csv",strip.white = T)
 names(sample_data)
 
 colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","PdvsL_Other")
 head(sample_data)
 
-
-sample_data <- dplyr::full_join(coldata,sample_data,by="ID")
-head(sample_data) 
+sample_data_row_order <- match(colnames(counts),sample_data$ID)
 
 #Now we use DESeq2 to run the differential expression analyses
 # This sets up the DESeq model
-dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data,design = ~  treat+ HardCoral)
+dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data[sample_data_row_order,],design = ~  treat+ HardCoral)
 
 # Now we run the actual DESeq fitting process. 
 # We do this twice. The first is a standard fit that will allow wald tests between specific conditions. 
