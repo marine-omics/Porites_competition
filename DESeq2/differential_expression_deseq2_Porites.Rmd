@@ -84,15 +84,7 @@ pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TR
 ```{r without PdLd}
 counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
 
-sample_data2 <- read.csv("raw_data/Samples_data2.csv",strip.white = T)
-names(sample_data2)
-
-colnames(sample_data2) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","PdvsL_Other")
-head(sample_data2)
-
-
-sample_data2 <- dplyr::full_join(coldata2,sample_data2,by="ID")
-head(sample_data2) 
+sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),]
 
 
 # This sets up the DESeq model
