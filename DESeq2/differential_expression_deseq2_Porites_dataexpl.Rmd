@@ -21,6 +21,7 @@ library(pheatmap)
 First we prepare the data.  This involves reading in a counts matrix from corset.  Then we extract the sample names from the columns and match those to conditions in an excel file that describes the experimental conditions for each sample.
 
 ```{r prepdata, include=FALSE}
+setwd("~/Dropbox/natalia_competition/Porites_competition/DESeq2")
 
 # Obtained with `corset_alldifferent_genomics1.03.sh`
 # First step to explore data: Using all samples
@@ -82,20 +83,21 @@ pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TR
 
 # 2. Without PdLd as outlier, same model
 ```{r without PdLd}
+#setwd("~/Dropbox/natalia_competition/Porites_competition/DESeq2")#
+setwd("~/Dropbox/natalia_competition/Porites_competition/DESeq2")
+
 counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
 
 sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),]
-
-
+sample_data3 <- sample_data2 %>% unite(HardCoralTrt,HardCoral,treat)
 # This sets up the DESeq model
-dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  treat+ HardCoral)
+dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  treat*HardCoral)
 
 # Now we run the actual DESeq fitting process. 
 dds2 <- DESeq(dds2)
 
-ddslrt2 <- DESeq(dds2,test = "LRT",reduced = ~ 1 + HardCoral)
-
 # For each of the fits we extract results tables. 
+resultsNames(dds2)
 res_dds2<- results(dds2)
 resOrdered_dds2 <- as.data.frame(res_dds2[order(res_dds2$padj),]) %>% add_rownames("cluster_id") %>% filter(padj<0.1) # same as contrast Pd, Pf
 
@@ -117,6 +119,46 @@ resOrdered_P2 <- as.data.frame(res_P2[order(res_P2$padj),]) %>% add_rownames("cl
 vsd2 <- varianceStabilizingTransformation(dds2, blind=FALSE)
 pca_data <- plotPCA(vsd2,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
   ggplot(pca_data,aes(x=PC1,y=PC2)) + geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + geom_label_repel(aes(label=group))  + theme(text = element_text(size=20))
+  
+# For genes DE ONLY in  contrast btw Control and treatment
+names(resOrdered_T2)
+names(Lc_LvsLPd_only)
+
+signif_genes <-  resOrdered_T2[which(resOrdered_T2$padj<0.1),]$cluster_id
+select <- which(rownames(vsd2) %in% signif_genes)
+TreatvsControl <- assay(vsd2)[select,]
+
+write.table(TreatvsControl ,sep="\t",file = "results/TreatvsControl.txt",row.names = TRUE,quote = FALSE)
+TreatvsControl<- read.csv("results/TvsC.csv", strip.white = T)
+names(TreatvsControl) 
+# Generate graphs 
+newrownames<- TreatvsControl %>% dplyr::select(cluster_id)
+new_data<- TreatvsControl
+new_data<-reshape2::melt(new_data)
+write.csv(new_data, "data/forplot.csv") 
+# I edit table to have the different columns nedded for the graphs
+forplot<-read.csv("data/forplot.csv", strip.white = TRUE)
+names(forplot)
+new_data<- forplot %>% dplyr::arrange(cluster_id) %>% slice(551:660)
+Plot_exp<-ggplot2::ggplot(data=new_data, aes(x=SoftCoral, y=log(value), colour=HardCoral)) + geom_point(aes(shape=TreatControl)) + facet_wrap(~cluster_id)  
+Plot_exp
+
+#Heatmap for 58 genes
+
+select <- which(rownames(vsd2) %in% signif_genes)
+df <- as.data.frame(colData(dds2)[,c("ID","SoftCoralControl","HardCoral")])
+heatmap_data <- assay(vsd2)[select,order(df$HardCoral)]
+descriptions <- paste(rownames(heatmap_data))
+rownames(heatmap_data) <- descriptions
+
+# This writes the heatmap to a file.  
+# In this case the file is deliberately much larger than one page so all the proteins can be displayed with their names.
+# If you want a pdf to include in a talk the names will probably need to be removed (show_rownames=FALSE) and the size adjusted accordingly
+#
+pdf(file="results/heatmap_58.pdf",height =20,width = 20)
+pheatmap(heatmap_data, cluster_rows=TRUE, show_rownames=TRUE,cluster_cols=FALSE)
+dev.off()  
+  
 ```
 # 3. Changing model with SoftCoralControl with all samples
 ```{r, model : SoftCoralControl}
