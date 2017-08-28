@@ -1,0 +1,68 @@
+---
+title: "Integrating_Trinotate_Corset"
+author: "Ira Cooke"
+date: "21/08/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Script for joining corset clusters to annotation information from Trinotate
+```{r, libraries and wdr}
+library(dplyr)
+
+setwd("~/Dropbox/natalia_competition/Porites_competition/DESeq2")
+```
+
+# Trinotate data may have multiple rows for a single transcript_id in cases where more than one predicted peptide results from it
+```{r, loading data}
+trinotate_data <-read_tsv("raw_data/trinotate_annotation_report_with_genes.xls") %>% rename(gene_id=`#gene_id`)
+
+# Cluster data generally has multiple rows per cluster_id but only one per transcript_id since clusters may be composed of multiple transcripts 
+
+cluster_data <- read.delim("raw_data/03-clusters.txt",stringsAsFactors = FALSE, header = FALSE)
+names(cluster_data) <- c("transcript_id","cluster_id")
+
+counts <- read_tsv("raw_data/03-counts.txt") %>% rename(cluster_id=X1)
+
+```
+
+```{r, joining}
+# The result of this left_join is an increase in the number of rows over "cluster_data" because trinotate_data has multiple rows per transcript_id
+
+cluster_data <- counts %>% left_join(cluster_data,by="cluster_id")
+
+ann_cluster_data <- cluster_data %>% left_join(trinotate_data, by="transcript_id")
+```
+
+```{r, scoring annotations}
+# This is to create a row "score" which is higher for better annotated transcripts.
+ann_scores <- apply(ann_cluster_data,1,function(row){
+  sum(row != ".")
+})
+ann_cluster_data <- cbind(ann_cluster_data,ann_scores)
+
+# Adding to the score the lenght of the transcript and predicted protein
+ann_cluster_data <- ann_cluster_data %>% mutate(ts_len = str_length(transcript)/max(str_length(transcript))) %>% 
+  mutate(pep_len = str_length(transcript)/max(str_length(transcript))) %>% mutate(ann_scores=ann_scores+ts_len+pep_len)
+
+# Now we pick the row with the top score.  If there are multiple rows with the same score just pick one at random
+reag_ann_cluster_data <- ann_cluster_data %>% group_by(cluster_id) %>% top_n(n=1,wt=ann_scores) %>% sample_n(1)
+
+#write file with annotated transcriptome
+saveRDS(reag_ann_cluster_data,file = "data/annotated_clusters_Porites.rda")
+write.csv(reag_ann_cluster_data, "results/Raw_annotated_clusters_Porites.csv")
+
+```
+# Joining annotations and DE genes
+```{r, joining with DEG}
+# Joining annotations and DE genes
+# Read cleaned annotation file
+ann_cluster_data<- read.csv("data/annotated_clusters_Porites.csv")
+DE_193<- read.csv("results/TreatControl_Porites_193.csv")
+names(DE_193)
+DE_193_annotation<- left_join(DE_193,ann_cluster_data, by='cluster_id')
+write.csv(DE_193_annotation, "results/DE_193_annotation.csv")
+```
