@@ -9,9 +9,9 @@ The output file `species1_good.PdPf_transfuse95_cons.fa` from psytrans represent
 BUSCO results for this are;
 
 
-> # BUSCO version is: 2.0.1 
-> # Summarized benchmarking in BUSCO notation for file species1_good.PdPf_transfuse95_cons.fa
-> # BUSCO was run in mode: tran
+> ##### BUSCO version is: 2.0.1 
+> ##### Summarized benchmarking in BUSCO notation for file species1_good.PdPf_transfuse95_cons.fa
+> ##### BUSCO was run in mode: tran
 >
 >	C:97.0%[S:33.3%,D:63.7%],F:2.3%,M:0.7%,n:303
 >
