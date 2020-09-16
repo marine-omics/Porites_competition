@@ -9,3 +9,5 @@ hpc/psytrans/species2_good.PdPf_transfuse95_cons.fa
 hpc/psytrans/run_PPdPf_busco/full_table_PPdPf_busco.tsv
 hpc/psytrans/run_PPdPf_busco/missing_busco_list_PPdPf_busco.tsv
 hpc/psytrans/run_PPdPf_busco/short_summary_PPdPf_busco.txt
+hpc/corset/03-clusters.txt
+hpc/corset/03-counts.txt

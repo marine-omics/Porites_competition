@@ -5,6 +5,7 @@
 
 - [Initial Transcriptome Assembly](hpc/Assembly)
 - [Symbiont Transcript Removal](hpc/psytrans)
+- [Clustering transcripts and counting assigned reads](hpc/corset)
 
 ## Change Log
 
