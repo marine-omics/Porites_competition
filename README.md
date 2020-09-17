@@ -14,6 +14,3 @@
 - [Differential Expression Analysis](02_deseq.md)
 - [Analysis of Polyp Activity Observations](03_polyp_activity.md)
 
-## Change Log
-
-- "Integrating_Trinotate_Corset.Rmd" -> 01_annotate.Rmd
