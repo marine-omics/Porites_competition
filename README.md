@@ -6,6 +6,12 @@
 - [Initial Transcriptome Assembly](hpc/Assembly)
 - [Symbiont Transcript Removal](hpc/psytrans)
 - [Clustering transcripts and counting assigned reads](hpc/corset)
+- [Functional Annotation with Trinotate](hpc/trinotate)
+
+## Statistical Analysis and Visualisation
+
+- [Gene Annotation](01_annotate.md)
+- [Differential Expression Analysis](02_deseq.md)
 
 ## Change Log
 

@@ -3,3 +3,10 @@
 .RData
 .Ruserdata
 hpc/
+results/
+cache/
+*_cache/
+.DS_Store
+raw_data
+GoSeq
+PolypActivity

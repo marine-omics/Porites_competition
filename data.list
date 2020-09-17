@@ -11,3 +11,6 @@ hpc/psytrans/run_PPdPf_busco/missing_busco_list_PPdPf_busco.tsv
 hpc/psytrans/run_PPdPf_busco/short_summary_PPdPf_busco.txt
 hpc/corset/03-clusters.txt
 hpc/corset/03-counts.txt
+hpc/trinotate/trinotate_annotation_report_nogenes.xls
+hpc/trinotate/trinotate_annotation_report_with_genes.xls
+raw_data/Samples_data.csv
