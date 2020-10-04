@@ -1,0 +1,16 @@
+hpc/Assembly/PdPf_transfuse95_cons_stats.txt
+hpc/Assembly/transrate_PdPf_transfuse95_cons/PdPf_transfuse95_cons_scores.csv
+hpc/Assembly/transrate_PdPf_transfuse95_cons/bad.PdPf_transfuse95_cons.fa
+hpc/Assembly/transrate_PdPf_transfuse95_cons/good.PdPf_transfuse95_cons.fa
+
+hpc/psytrans/good.PdPf_transfuse95_cons.fa
+hpc/psytrans/species1_good.PdPf_transfuse95_cons.fa
+hpc/psytrans/species2_good.PdPf_transfuse95_cons.fa
+hpc/psytrans/run_PPdPf_busco/full_table_PPdPf_busco.tsv
+hpc/psytrans/run_PPdPf_busco/missing_busco_list_PPdPf_busco.tsv
+hpc/psytrans/run_PPdPf_busco/short_summary_PPdPf_busco.txt
+hpc/corset/03-clusters.txt
+hpc/corset/03-counts.txt
+hpc/trinotate/trinotate_annotation_report_nogenes.xls
+hpc/trinotate/trinotate_annotation_report_with_genes.xls
+raw_data/Samples_data.csv

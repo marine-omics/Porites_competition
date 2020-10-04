@@ -1,6 +1,6 @@
 !/bin/bash
 #Set the name of the job
-#PBS -N PdPf_95_good_buscoM
+#PBS -N PPdPf_busco
 
 #Allocate required amount of wall time
 #PBS -l walltime=1000:00:00
@@ -13,8 +13,7 @@ module load hmmer
 module load blast
 module load python/3.6.1
 
+cd ${PBS_O_WORKDIR}
 
-cd /homes/27/jc275567/Porites_competition/hpc/Assembly/transrate_PdPf_transfuse95_cons
-
-python3 /homes/27/jc275567/Software/busco/BUSCO.py -m tran --cpu 16 -l /homes/27/jc275567/Databases/metazoa_odb9 \
--o PdPf_95_good_busco -i good.PdPf_transfuse95_cons.fa
+python3 /homes/27/jc275567/Software/busco/BUSCO.py -m tran --cpu 16 -l /homes/27/jc275567/Databases/eukaryota_odb9 \
+-o PPdPf_busco -i species1_good.PdPf_transfuse95_cons.fa
