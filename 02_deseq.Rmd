@@ -1,5 +1,7 @@
 ---
 title: "DESeq analysis"
+author: "Natalia Andrade and Ira Cooke"
+date: "07/08/2017"
 output: github_document
 ---
 
@@ -20,10 +22,7 @@ library(pheatmap)
 
 Counts obtained from Corset were analysed with DESeq to identify differentially expressed genes between HardCoral treatments. 
 
-Initial data exploration with PCA revealed that PdLd is an extreme outlier.  We therefore excluded this sample from further analysis
-
-
-```{r prepdata, include=FALSE}
+```{r, include=FALSE}
 #First we prepare the data.  
 #This involves reading in a counts matrix from corset.  
 #Then we extract the sample names from the columns and match those to conditions in an excel file that describes the experimental conditions for each sample.
@@ -36,35 +35,37 @@ sample_data <- read_csv("raw_data/Samples_data.csv",trim_ws = TRUE)
 colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","PdvsL_Other")
 
 sample_data_row_order <- match(colnames(counts),sample_data$ID)
+```
 
+Initial data exploration with PCA revealed that PdLd is an extreme outlier.  We therefore excluded this sample from further analysis
+
+```{r, include=FALSE}
 dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data[sample_data_row_order,],design = ~  treat+ HardCoral)
 vsd <- varianceStabilizingTransformation(dds, blind=FALSE)
 
-plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE) %>% 
+pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+percentVar <- round(100 * attr(pca_data, "percentVar"))
+
+pca_data %>% 
   ggplot(aes(x=PC1,y=PC2)) + 
   geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + 
   geom_label_repel(aes(label=group)) + 
-  xlab("xlabel") + 
-  ylab("customylabel") + 
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) + 
+  ylab(paste0("PC2: ",percentVar[2],"% variance"))  +
   theme(text = element_text(size=20))
 ```
 
+Differential Expression Analysis with the outlier excluded was then performed based on a model with no intercept and a separate coefficient for each level of the variable `HardCoralTrt`.  This model gives us maximum flexibility for statistical testing using different contrasts.
 
-Differential Expression Analysis with the outlier excluded was then performed based on a model including the treatment, HardCoral and their interaction
-
-> ~ treat*HardCoral
+> ~ 0+HardCoralTrt
 
 ```{r}
-# 2. I eliminate PdLd from the analysis and refit the same model : treat + HardCoral
-# 2.1 Results for contrast : treat, "T", "C" > just 58 genes DE
-# 2.2 Results for contrasr: HardCoral, "Pd", "Pf"> 37661 genes DE btw colonies which is not a very intresting result
-# 2.2 PCA for dds > shows a difference btw colonies as well but it shows differences among the different nubbins from the same colony
-
 counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
 
-sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),]
+sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),] %>% 
+  unite("HardCoralTrt",HardCoral,treat,remove = FALSE)
 
-dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  treat*HardCoral)
+dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  0+HardCoralTrt)
 
 if (file.exists("cache/dds2.rds")) {
     dds2 <- read_rds("cache/dds2.rds")
@@ -76,88 +77,90 @@ if (file.exists("cache/dds2.rds")) {
 resultsNames(dds2)
 ```
 
+Before proceeding with contrasts we first check a PCA with the outlier excluded. This shows very clearly that Porites genotype is the dominant source of variation in the data, accounting for 89%. PC2 accounts for just 5% of variation and captures differences due to the competing Lobophytum colony and whether competition exists at all (Control).
 
 ```{r}
-
-# This contrast gives genes consistently DE between treatment and control
-res_T2 <- results(dds2,contrast = c("treat","T","C"),tidy = TRUE) %>% 
-  rename(cluster_id=row) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.05)
-  
-# This contrast looks for genes where the treatment and HardCoral interact
-res_I2 <- results(dds2,name="treatT.HardCoralPf",tidy = TRUE) %>% 
-  rename(cluster_id=row) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.05)
-
-# This just looks for genes DE between HardCorals.  There are so many of these it is meaningless
-res_P2 <- results(dds2,contrast = c("HardCoral","Pd","Pf"),tidy = TRUE) %>% 
-  rename(cluster_id=row) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.05)
-
 vsd2 <- varianceStabilizingTransformation(dds2, blind=FALSE)
+pca_data2 <- plotPCA(vsd2,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
+percentVar2 <- round(100 * attr(pca_data2, "percentVar"))
 
-plotPCA(vsd2,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE) %>% 
+pca_data2 %>% 
   ggplot(aes(x=PC1,y=PC2)) + 
   geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + 
   geom_label_repel(aes(label=group))  + 
+  xlab(paste0("PC1: ",percentVar2[1],"% variance")) + 
+  ylab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
   theme(text = element_text(size=20))
 ```
 
-For genes differentially expressed between control and treatment we plot raw values as scatterplots
+To set up contrasts we first use `resultsNames()` to extract a list of fitted coefficients in the model
+
+```{r}
+resultsNames(dds2)
+```
+
+Based on this we formulate the contrasts;
+
+1. `contrast_ct <- c(1,-1,1,-1)` which captures genes consistently different between treatment and control across both Porites colonies
+2. `contrast_pd <- c(1,-1,0,0)` capturing genes DE between treatment and control for `Pd` only
+3. `contrast_pf <- c(0,0,1,-1)` capturing genes DE between treatment and control for `Pf` only
+
+
+```{r}
+contrast_ct <- c(1,0,1,0)
+#contrast_ct <- c(1,-1,1,-1)
+contrast_pd <- c(1,-1,0,0)
+contrast_pf <- c(0,0,1,-1)
+
+#HardCoralTrtPd_C" "HardCoralTrtPd_T" "HardCoralTrtPf_C" "HardCoralTrtPf_T"
+
+# This contrast gives genes consistently DE between treatment and control
+ res_ct <- results(dds2,contrast = list(c("HardCoralTrtPd_C","HardCoralTrtPf_C"),c("HardCoralTrtPd_T","HardCoralTrtPf_T")),listValues=c(1/2,
+ -1/2), tidy = TRUE) %>% 
+  arrange(padj) %>% 
+  filter(padj<0.05)
+
+res_pd <- results(dds2,contrast = contrast_pd,tidy = TRUE) %>% 
+  arrange(padj) %>% 
+  filter(padj<0.05)
+
+res_pf <- results(dds2,contrast = contrast_pf,tidy = TRUE) %>% 
+  arrange(padj) %>% 
+  filter(padj<0.05)
+```
+
+For the top genes differentially expressed between control and treatment we plot raw values as scatterplots.  This is just to give a feel for how strong these candidates are when looking at the raw data directly.  
+
+Scanning through these plots I can see quite a few genes with consistent differences between both controls and the treatment values ... BUT .. there are others where the change seems to be driven by a strong change in just one of the controls (usually Pf).  This also seems to emerge from looking at the heatmap (see below).
 
 ```{r}
 # For genes DE ONLY in  contrast btw Control and treatment
 
-t2_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_T2$cluster_id),] %>% 
-  as.data.frame() %>% 
-  rownames_to_column("cluster_id") 
+top_genes <- res_ct %>% arrange(padj) %>% top_n(24) %>% pull(row)
 
-t2_genes_tidy %>% 
-  pivot_longer(-cluster_id,names_to = "ID",values_to="count") %>% 
-  left_join(sample_data) %>% 
-  ggplot(aes(x=SoftCoralControl, y=log(count), colour=HardCoral)) + 
-  geom_point(aes(shape=treat)) + 
-  facet_wrap(~cluster_id,ncol = 4)
+ct_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_ct$row),] %>%
+  as.data.frame() %>%
+  rownames_to_column("cluster_id")
+
+ct_genes_tidy %>%
+  filter(cluster_id %in% top_genes) %>% 
+  pivot_longer(-cluster_id,names_to = "ID",values_to="count") %>%
+  left_join(sample_data) %>%
+  ggplot(aes(x=SoftCoralControl, y=log(count), colour=HardCoral)) +
+  geom_point(aes(shape=treat)) +
+  facet_wrap(~cluster_id,ncol = 3,scales = "free_y")
 ```
 
-Now plot raw data as heatmaps.  For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful
+Now a heatmap for all the DE genes between treatment and control. For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful. The clusters reveal some interesting patterns (not sure if worth writing about but interesting).  There is a big cluster where the Pf control has higher expression.  There are also clusters driven by higher expression in a few specific interactions (PfLa, PfLc, PdLb) for one cluster .. and (PdLa, PdLe, PfLc) for the other.  It would be fascinating if this was also evident in the behavioural data.  Other clusters are driven by an overall higher expression in Pd vs Pf (bottom small cluster).
 
 
 ```{r}
-t2_heatmap_data <- t2_genes_tidy %>% 
-  as.data.frame() %>% 
+ct_heatmap_data <- ct_genes_tidy %>%
+  as.data.frame() %>%
   column_to_rownames("cluster_id")
 
-t2_heatmap_data_relative <- sweep(t2_heatmap_data, MARGIN=1, STATS= rowMeans(t2_heatmap_data))
-
-# This writes the heatmap to a file.  
-# In this case the file is deliberately much larger than one page so all the proteins can be displayed with their names.
-# If you want a pdf to include in a talk the names will probably need to be removed (show_rownames=FALSE) and the size adjusted accordingly
-#
-#pdf(file="results/heatmap_58.pdf",height =20,width = 20)
-pheatmap(t2_heatmap_data_relative, cluster_rows=TRUE, show_rownames=TRUE,cluster_cols=FALSE)
-#dev.off()  
-  
-```
-
-Plot a heatmap for genes with significant interactions.  This is interesting because it seems to indicate that there are many genes where Pf upregulates the gene in interaction relative to control whereas Pd does not.
+ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data))
 
 
-```{r}
-# For genes DE ONLY in  contrast btw Control and treatment
-
-i2_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_I2$cluster_id),] %>% 
-  as.data.frame() %>% 
-  rownames_to_column("cluster_id") 
-
-i2_heatmap_data <- i2_genes_tidy %>% 
-  as.data.frame() %>% 
-  column_to_rownames("cluster_id")
-
-i2_heatmap_data_relative <- sweep(i2_heatmap_data, MARGIN=1, STATS= rowMeans(i2_heatmap_data))
-
-pheatmap(i2_heatmap_data_relative, cluster_rows=TRUE, show_rownames=TRUE,cluster_cols=FALSE)
+pheatmap(ct_heatmap_data_relative, cluster_rows=TRUE, show_rownames=TRUE,cluster_cols=FALSE)
 ```
