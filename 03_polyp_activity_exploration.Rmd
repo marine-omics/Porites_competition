@@ -1,5 +1,5 @@
 ---
-title: "Polyp Activity"
+title: "Polyp Activity. Data Exploration and Statistical Analysis"
 author: "Rhondda Jones, Natalia Andrade and Ira Cooke"
 date: "29/08/2017"
 output: github_document
