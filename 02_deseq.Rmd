@@ -70,7 +70,7 @@ dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design =
 if (file.exists("cache/dds2.rds")) {
     dds2 <- read_rds("cache/dds2.rds")
 } else {
-  dds2 <- DESeq(dds2)
+  dds2 <- DESeq(dds2, parallel = TRUE)
   write_rds(dds2,"cache/dds2.rds")
 }
 
@@ -107,27 +107,26 @@ Based on this we formulate the contrasts;
 
 
 ```{r}
-contrast_ct <- c(1,0,1,0)
-#contrast_ct <- c(1,-1,1,-1)
-contrast_pd <- c(1,-1,0,0)
-contrast_pf <- c(0,0,1,-1)
-
 #HardCoralTrtPd_C" "HardCoralTrtPd_T" "HardCoralTrtPf_C" "HardCoralTrtPf_T"
 
 # This contrast gives genes consistently DE between treatment and control
  res_ct <- results(dds2,contrast = list(c("HardCoralTrtPd_C","HardCoralTrtPf_C"),c("HardCoralTrtPd_T","HardCoralTrtPf_T")),listValues=c(1/2,
  -1/2), tidy = TRUE) %>% 
   arrange(padj) %>% 
-  filter(padj<0.05)
+  filter(padj<0.1)
+
+contrast_pd <- c(1,-1,0,0)
+contrast_pf <- c(0,0,1,-1)
 
 res_pd <- results(dds2,contrast = contrast_pd,tidy = TRUE) %>% 
   arrange(padj) %>% 
-  filter(padj<0.05)
+  filter(padj<0.1)
 
 res_pf <- results(dds2,contrast = contrast_pf,tidy = TRUE) %>% 
   arrange(padj) %>% 
-  filter(padj<0.05)
+  filter(padj<0.1)
 ```
+
 
 For the top genes differentially expressed between control and treatment we plot raw values as scatterplots.  This is just to give a feel for how strong these candidates are when looking at the raw data directly.  
 
