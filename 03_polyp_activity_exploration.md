@@ -1,4 +1,4 @@
-Polyp Activity
+Polyp Activity. Data Exploration and Statistical Analysis
 ================
 Rhondda Jones, Natalia Andrade and Ira Cooke
 29/08/2017
@@ -41,7 +41,7 @@ mosaicplot(timeTableN, col=1:3,cex.axis = 1.05, font=14,
            main="Activity proportions without competition", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -54,7 +54,7 @@ mosaicplot(timeTableN_Pd, col=1:3,cex.axis = 1.1,
            main="Activity proportions without competition_Pd", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -67,7 +67,7 @@ mosaicplot(timeTableN_Pe, col=1:3,cex.axis = 1.1,
            main="Activity proportions without competition_Pe", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -80,7 +80,7 @@ mosaicplot(timeTableN_Pf, col=1:3,cex.axis = 1.1,
            main="Activity proportions without competition_Pf", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -97,7 +97,7 @@ mosaicplot(timeTableY, col=1:3,cex.axis = 1.1,
 #dev.off()
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 ``` r
 timeTableY_Pd = with(polyp_Pd[polyp_Pd$TREAT=="Yes",],table(TimeCat, Activity))
@@ -106,7 +106,7 @@ mosaicplot(timeTableY_Pd, col=1:3, cex.axis = 1.1,
            main="Activity proportions with competition_Pd", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -119,7 +119,7 @@ mosaicplot(timeTableY_Pe, col=1:3, cex.axis = 1.1,
            main="Activity proportions with competition_Pe", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -132,7 +132,7 @@ mosaicplot(timeTableY_Pf, col=1:3, cex.axis = 1.1,
            main="Activity proportions with competition_Pf", xlab="Time (days)")
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ``` r
 #dev.off()
@@ -203,7 +203,7 @@ par(mfrow=c(2,3))
 plot(ordinal::slice(fm00))     ## well-behaved for both thresholds & explanatory variables
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ``` r
 ## curvature?
@@ -323,7 +323,7 @@ par(mfrow=c(2,3))
 plot(ordinal::slice(fm02)) ## still well behaved
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->![](03_polyp_activity_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->![](03_polyp_activity_files/figure-gfm/unnamed-chunk-14-3.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-14-3.png)<!-- -->
 
 ``` r
 #   nominal instead?
@@ -551,7 +551,7 @@ confint(pr3d)
 plot(pr3d)
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
 ``` r
 ## not bad, sd pretty well estimated despite the warnings
@@ -826,7 +826,7 @@ for(i in 1:36) segments(i, ci[i,1], i, ci[i, 2])
  abline(h = 0, lty=2)
 ```
 
-![](03_polyp_activity_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](03_polyp_activity_exploration_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ``` r
 exp(coef(fm3d)[5])
