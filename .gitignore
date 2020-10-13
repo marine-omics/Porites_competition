@@ -4,6 +4,7 @@
 .Ruserdata
 hpc/
 results/
+figures
 cache/
 *_cache/
 .DS_Store

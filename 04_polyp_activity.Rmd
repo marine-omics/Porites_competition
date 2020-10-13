@@ -6,8 +6,9 @@ output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
+library(ordinal)
 ```
 
 ```{r}
@@ -31,16 +32,36 @@ This is a ggplot equivalent of of the Mosaicplots used in data exploration. This
 1. The treated colonies are more likely to be partial or closed than controls
 2. Colonies seemed to be more likely to be partial or closed at the start of the trial and gradually converted to open as the trial progressed.
 
-## TODO
-- Make plot more presentable for the paper
-- Find a way to display differences between groups of nubbins based on their interacting Lobophytum partner that mirrors trends seen in the DESeq analysis
-
 ```{r}
+library(ggpubr)
 polyp_act_long %>% na.omit() %>% 
+  group_by(HARD,TREAT,TimeCat) %>%   
+  mutate(tankcount=length(unique(TANK))) %>% 
+  group_by(HARD,TREAT,TimeCat,Activity) %>% 
+  mutate(catcount=n()) %>% 
+  ungroup() %>% 
+  mutate(TREAT = ifelse(TREAT=="Yes","Competition","Control")) %>% 
+  mutate(TimeCat = as.factor(TimeCat)) %>% 
   ggplot(aes(x=TimeCat)) + 
-  geom_bar(aes(fill=Activity), position = "fill") +
+  geom_col(aes(fill=Activity,y=catcount), position = "fill") +
+  geom_text(aes(y=0.1,label=tankcount), fill = "transparent",size=2, color="grey40") +
+  geom_vline(xintercept=4.5,color="blue") +
   facet_grid(HARD~TREAT) + 
+  theme_pubclean() +
   theme(axis.text.x = element_text(angle=90)) + 
-  xlab("Time Category") + ylab("")
+  xlab("Days Since Start") + ylab("Proportion of Nubbins")
 ```
 
+
+```{r, echo=FALSE, eval=FALSE}
+ggsave("figures/polyp_activity.png",width = 12,height = 8)
+```
+
+
+Based on extensive model selection analysis (see [03_polyp_activity_exploration.md](03_polyp_activity_exploration.md)) a generalised cumulative mixed effects model was chosen to fit the polyp activity data. 
+
+
+```{r}
+fm3d =clmm2(location=Activity ~ TimeCat+TREAT+HARD, random=TANK, Hess=TRUE,  data=polyp_act_long)
+summary(fm3d)
+```
