@@ -26,5 +26,5 @@ tar -zxvf data.tgz
 
 - [Gene Annotation](01_annotate.md)
 - [Differential Expression Analysis](02_deseq.md)
-- [Analysis of Polyp Activity Observations](03_polyp_activity.md)
+- [Analysis of Polyp Activity Observations](04_polyp_activity.md)
 
