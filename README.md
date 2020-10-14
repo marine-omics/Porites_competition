@@ -15,7 +15,7 @@ wget 'https://cloudstor.aarnet.edu.au/plus/s/zjlFSUchshirLUt/download' -O data.t
 tar -zxvf data.tgz
 
 # This is a much larger file required for some analyses only
-wget 'https://cloudstor.aarnet.edu.au/plus/s/zjlFSUchshirLUt/download' -O data.transcriptome.tgz
+wget 'https://cloudstor.aarnet.edu.au/plus/s/uDTruJ83Q4OcHHd/download' -O data.transcriptome.tgz
 tar -zxvf data.transcriptome.tgz
 ```
 
