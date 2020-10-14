@@ -1,0 +1,169 @@
+---
+title: "Gene function analysis"
+author: "Natalia Andrade and Ira Cooke"
+date: "07/08/2017"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(cache=TRUE)
+options(width = 60)
+
+library(knitr)
+library(DESeq2)
+library(tidyverse)
+library(ggrepel)
+library(pheatmap)
+library(UpSetR)
+library(ggplot2)
+```
+
+
+
+Load differentially expressed genes between HardCoral treatments obtain data from analysis with DESeq2 (03_deseq). 
+
+```{r, include=FALSE}
+
+#First we prepare the data.  
+#This involves reading in dds2 file from DESeq2 analysis.  
+counts <- read_tsv("hpc/corset/03-counts.txt") %>% 
+  column_to_rownames(var='X1') %>% 
+  as.matrix()
+counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
+
+sample_data <- read_csv("raw_data/Samples_data.csv",trim_ws = TRUE)
+colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","PdvsL_Other")
+sample_data_row_order <- match(colnames(counts),sample_data$ID)
+
+sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),] %>% 
+  unite("HardCoralTrt",HardCoral,treat,remove = FALSE)
+
+dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  0+HardCoralTrt)
+dds2 <- DESeq(dds2)
+#if (file.exists("cache/dds2.rds")) {
+#    dds2 <- read_rds("cache/dds2.rds")
+#} else {
+#  dds2 <- DESeq(dds2)
+#  write_rds(dds2,"cache/dds2.rds")
+#} ### if we make this work I think we could just use dds2 <- read_rds("cache/dds2.rds") ###
+
+# We transform the data
+vsd2 <- varianceStabilizingTransformation(dds2, blind=FALSE)
+
+contrast_ct <- list(c("HardCoralTrtPd_C","HardCoralTrtPf_C"),c("HardCoralTrtPd_T","HardCoralTrtPf_T"))
+
+#Then we extract the results for the contrast between Control and Treatment
+res_ct <- results(dds2,contrast = contrast_ct,listValues=c(1/2,
+ -1/2), tidy = TRUE) %>% 
+  arrange(padj) %>% 
+  filter(padj<0.1) # Total 174 genes
+
+#Transformed expression per sample
+ct_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_ct$row),] %>%
+  as.data.frame() %>%
+  rownames_to_column("cluster_id")
+
+#DESeq2 results and transformed exprestion per sample
+DEG_174<- left_join(res_ct, ct_genes_tidy, by=c("row"="cluster_id")) %>% dplyr::rename("cluster_id"="row")
+```
+
+Annotating the 174 DEG_CvsT with transcriptome annotation and manual annotation
+```{r annotating DEG_CvsT}
+
+# Transcriptome annotation (location of the file temporary until in cloud)
+P.cylindrica_144087anno<- readRDS("~/Dropbox/natalia_competition/Porites_competition/gene_function/data/P.cylindrica_144087anno.rda") %>% select(-PdLa,-PdLb, -PdLc,-PdLd,-PdLe, -PdC, -PfLa, -PfLb, -PfLc, -PfLd, -PfLe, -PfC)
+DEG_174<- inner_join(P.cylindrica_144087anno,DEG_174, by=c("cluster_id"))
+
+# Manual annotation (also location temporary, it needs more edits don't put it in the cloud yet please)
+Manual<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_193_database.csv')
+
+DEG_174<- right_join(Manual,DEG_174, by='cluster_id')
+#write.csv(DEG_174, '/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene_Function_Analysis/DE_174_database.csv') #this data needs to be cleaned a bit more(Protein names)
+```
+
+Plots showing the expression of genes in the different categories anad for the two genotypes
+
+```{r}
+# Graph use in 
+boxplot(log10(assays(dds2)[["cooks"]]), range=0, las=2)
+
+
+# For genes DE ONLY in  contrast btw Control and treatment
+
+top_genes <- DEG_174 %>% arrange(padj) %>% top_n(20) %>% pull(cluster_id)
+
+DEG_174 %>%
+  filter(cluster_id %in% top_genes) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) %>% 
+  pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
+  left_join(sample_data) %>% 
+  ggplot(aes(x=treat, y=log(count), colour=HardCoral)) +
+  geom_point(aes(shape=SoftCoralControl)) +
+  facet_wrap(~cluster_id,ncol = 5,scales = "free_y") +
+  ggtitle("Top 20 deferentially expressed genes in Porites nubbins interacting with Lobophytum compared to non-interacting Porites")
+
+# For gene classify as RESISTING related genes
+
+topResistingPorites<- DEG_174 %>% arrange(padj) %>% filter(RESISTING==TRUE) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) 
+
+plot_portiesR<- topResistingPorites %>%  
+    pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
+    left_join(sample_data) %>% 
+    ggplot(aes(x=treat, y=log(count), colour= HardCoral)) + 
+    geom_boxplot() + 
+    facet_wrap( ~ cluster_id ,scales = "free_y")+
+  ggtitle("Deferentially expressed genes in Porites nubbins interacting with Lobophytum compared to non-interacting Porites related with Resistance")
+
+plot_portiesR
+
+# For genes classify as CELLULAR STRESS related
+
+topCellularstressPorites<- DEG_174 %>% arrange(padj) %>% filter(CELLULAR.STRESS==TRUE) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) 
+plot_portiesCS<- topCellularstressPorites %>%  
+    pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
+    left_join(sample_data) %>% 
+    ggplot(aes(x=treat, y=log(count), colour= HardCoral)) + 
+    geom_boxplot() + 
+    facet_wrap( ~ cluster_id ,scales = "free_y")
+plot_portiesCS
+
+
+```
+
+Ploting expression of Lobophytum DEG and Porites DEG to show effect of colony Pd
+```{r}
+# First prepair Lobophytum data
+Trans_expr<- read.delim('~//Dropbox/natalia_competition/Porites_competition/gene_function/data/Lc_LvsPd_all_0.5_exp.txt', header = TRUE, sep= "\t", row.names = NULL)
+
+Trans_expr<- dplyr::rename(Trans_expr,LdPe = L10_S10.bam, LdPf= L11_S11.bam, LdPd= L12_S12.bam, LePe= L13_S13.bam, Le= L14_S14.bam, LePf=L15_S15.bam, LePd= L16_S16.bam, LcPe= L17_S10.bam, Lc= L18_S11.bam, LcPf= L19_S12.bam, LaPd= L1_S1.bam, LcPd= L20_S13.bam, La= L2_S2.bam, LaPf=L3_S3.bam, LaPe= L4_S4.bam, Lb= L5_S5.bam, LbPe=  L6_S6.bam, LbPd= L7_S7.bam, LbPf= L8_S8.bam, Ld= L9_S9.bam)
+names(Trans_expr)
+Trans_expr<- dplyr::select(Trans_expr,Cluster,LaPd, LcPd,LdPd, LePd,LbPd,LaPe, LbPe, LcPe, LdPe, LePe, LaPf, LbPf, LcPf, LdPf, LePf, La, Lb, Lc, Ld, Le)
+
+Trans_expr<- dplyr::tbl_df(Trans_expr)
+
+#DEG in Lobophytum under competition compared to Lobophytum control
+DE_339<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DEG_339_LobophytumComp_20190116.csv')
+
+#Lobophytum expression don't select Pe, Top50 genes
+Exp_data_Lobo<- left_join(DE_339, Trans_expr, by=c("name"="Cluster")) %>% select(name,LaPd,LcPd,LdPd,LePd,LbPd,LaPf,LbPf,LcPf,LdPf,LePf,La,Lb,Lc,Ld,Le)
+
+top50Lobo<- left_join(DE_339, Trans_expr, by=c('name'='Cluster')) %>% arrange(padj) %>% top_n(50) %>% select(name,LaPd,LcPd,LdPd,LePd,LbPd,LaPf,LbPf,LcPf,LdPf,LePf,La,Lb,Lc,Ld,Le) 
+
+#Top 50 genes DE for Porites
+top50Porites<- DEG_174 %>% arrange(padj) %>% top_n(50) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) 
+
+#Porites expression and Lobophytum
+sample_data_both<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/Samples_data_both.csv')
+Exp_PoritesLobo<- full_join(top50Porites, top50Lobo, by=c('cluster_id'='name'))
+
+plot_ExpPoritesLobo<- Exp_PoritesLobo %>% as.data.frame() %>%
+pivot_longer(c(-cluster_id),names_to = "ID",values_to="count")  %>% 
+  filter(!is.na(count)) %>%
+  left_join(sample_data_both) %>% 
+  ggplot(aes(x=treat , y=log(count), colour=HardCoralControl )) +
+    geom_boxplot() +
+    facet_grid(Coral~SoftCoralControl,scales = "free_y")
+plot_ExpPoritesLobo
+```
+
