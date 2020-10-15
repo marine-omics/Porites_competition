@@ -14,7 +14,7 @@ performed based on a model with no intercept and a separate coefficient
 for each level of the variable `HardCoralTrt`. This model gives us
 maximum flexibility for statistical testing using different contrasts.
 
-> \~ 0+HardCoralTrt
+> ~ 0+HardCoralTrt
 
     ## [1] "HardCoralTrtPd_C" "HardCoralTrtPd_T" "HardCoralTrtPf_C"
     ## [4] "HardCoralTrtPf_T"
@@ -66,3 +66,9 @@ the behavioural data. Other clusters are driven by an overall higher
 expression in Pd vs Pf (bottom small cluster).
 
 ![](02_deseq_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+Finally let’s try to create a composite figure including the PCA and
+heatmap because there are related patterns seen in both figures that we
+would like to make clear.
+
+![](02_deseq_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->

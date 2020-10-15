@@ -11,14 +11,18 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8,
 knitr::opts_chunk$set(cache=TRUE)
 options(width = 60)
 
+# Run if needed to install ComplexHeatmap
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("ComplexHeatmap")
+
 library(knitr)
 library(DESeq2)
 library(tidyverse)
 library(ggrepel)
-library(pheatmap)
+library(ComplexHeatmap)
+library(ggpubr)
 ```
-
-
 
 Counts obtained from Corset were analysed with DESeq to identify differentially expressed genes between HardCoral treatments. 
 
@@ -90,7 +94,10 @@ pca_data2 %>%
   geom_label_repel(aes(label=group))  + 
   xlab(paste0("PC1: ",percentVar2[1],"% variance")) + 
   ylab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
-  theme(text = element_text(size=20))
+  theme(text = element_text(size=20)) + 
+  theme_pubclean() +
+  theme(legend.position = "right")
+ggsave("figures/pca.png", width = 12, height = 8)
 ```
 
 To set up contrasts we first use `resultsNames()` to extract a list of fitted coefficients in the model
@@ -161,5 +168,38 @@ ct_heatmap_data <- ct_genes_tidy %>%
 ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data))
 
 
-pheatmap(ct_heatmap_data_relative, cluster_rows=TRUE, show_rownames=TRUE,cluster_cols=FALSE)
+
+Heatmap(ct_heatmap_data_relative)
 ```
+
+
+Finally let's try to create a composite figure including the PCA and heatmap because there are related patterns seen in both figures that we would like to make clear.
+
+```{r}
+library(cowplot)
+library(grid)
+
+pca_plot <- pca_data2 %>% 
+  ggplot(aes(x=PC1,y=PC2)) + 
+  geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + 
+  geom_label_repel(aes(label=group))  + 
+  xlab(paste0("PC1: ",percentVar2[1],"% variance")) + 
+  ylab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
+  theme(text = element_text(size=20)) + 
+  theme_pubclean() + 
+  theme(legend.position = "none")
+
+library(circlize)
+col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+
+hm_plot <- grid.grabExpr(draw(Heatmap(ct_heatmap_data_relative, 
+                                      col = col_fun,
+                                      show_row_dend = FALSE,
+                                      show_row_names = FALSE,heatmap_legend_param = list(title="LogFC"))))
+
+plot_grid(pca_plot,hm_plot,nrow = 1, rel_widths = c(0.5,0.5))
+ggsave2("figures/pca_hm.png", width = 12,height = 8)
+```
+
+
+
