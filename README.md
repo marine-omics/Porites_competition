@@ -13,6 +13,10 @@ git clone https://github.com/China2302/Porites_competition.git
 cd Porites_competition
 wget 'https://cloudstor.aarnet.edu.au/plus/s/zjlFSUchshirLUt/download' -O data.tgz
 tar -zxvf data.tgz
+
+# This is a much larger file required for some analyses only
+wget 'https://cloudstor.aarnet.edu.au/plus/s/uDTruJ83Q4OcHHd/download' -O data.transcriptome.tgz
+tar -zxvf data.transcriptome.tgz
 ```
 
 ### Data Processing
@@ -26,5 +30,5 @@ tar -zxvf data.tgz
 
 - [Gene Annotation](01_annotate.md)
 - [Differential Expression Analysis](02_deseq.md)
-- [Analysis of Polyp Activity Observations](03_polyp_activity.md)
+- [Analysis of Polyp Activity Observations](04_polyp_activity.md)
 
