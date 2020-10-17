@@ -22,6 +22,7 @@ library(tidyverse)
 library(ggrepel)
 library(ComplexHeatmap)
 library(ggpubr)
+library(colorspace)
 ```
 
 Counts obtained from Corset were analysed with DESeq to identify differentially expressed genes between HardCoral treatments. 
@@ -167,9 +168,9 @@ ct_heatmap_data <- ct_genes_tidy %>%
 
 ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data))
 
+colgroup_colours <- qualitative_hcl(3, palette = "Dark 3")
 
-
-Heatmap(ct_heatmap_data_relative)
+Heatmap(ct_heatmap_data_relative, column_km = 3, row_km = 6, show_row_names = FALSE,column_title_gp = gpar(fill = colgroup_colours, font = 1:3))
 ```
 
 
@@ -179,12 +180,21 @@ Finally let's try to create a composite figure including the PCA and heatmap bec
 library(cowplot)
 library(grid)
 
-pca_plot <- pca_data2 %>% 
+hm_col_groups <- list(down = c("PdLb","PfLd","PfLa"), neutral = c("PdC","PdLc","PfLe","PfLb","PfC"), up = c("PdLe","PdLa","PfLc"))
+
+pca_data3 <- pca_data2 %>% 
+  mutate(colgroup = "neutral") %>% 
+  mutate(colgroup = ifelse(name %in% hm_col_groups$up,"up","neutral")) %>% 
+  mutate(colgroup = ifelse(name %in% hm_col_groups$down,"down",colgroup))
+
+pca_plot <- pca_data3 %>% 
   ggplot(aes(x=PC1,y=PC2)) + 
-  geom_point(aes(color=SoftCoralControl,shape=HardCoral),size=4) + 
-  geom_label_repel(aes(label=group))  + 
+  geom_point(aes(shape=HardCoral),size=4) + 
+#  geom_point(aes(x=-1,y=PC2, color=colgroup),size=4)+
+  geom_label_repel(aes(label=name, fill=colgroup))  + 
   xlab(paste0("PC1: ",percentVar2[1],"% variance")) + 
   ylab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
+  scale_fill_discrete_qualitative(palette = "Dark 3") +
   theme(text = element_text(size=20)) + 
   theme_pubclean() + 
   theme(legend.position = "none")
@@ -194,11 +204,22 @@ col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
 
 hm_plot <- grid.grabExpr(draw(Heatmap(ct_heatmap_data_relative, 
                                       col = col_fun,
+                                      column_km_repeats = 100,
+                                      column_km = 3,
+                                      row_km = 6,
+                                      row_title = NULL,
                                       show_row_dend = FALSE,
-                                      show_row_names = FALSE,heatmap_legend_param = list(title="LogFC"))))
+                                      show_row_names = FALSE,
+                                      column_title_gp = gpar(fill = colgroup_colours, font = 1:3),
+                                      heatmap_legend_param = list(title="LogFC"))))
 
-plot_grid(pca_plot,hm_plot,nrow = 1, rel_widths = c(0.5,0.5))
-ggsave2("figures/pca_hm.png", width = 12,height = 8)
+plot_grid(pca_plot,hm_plot,nrow = 1, 
+          rel_widths = c(0.4,0.6), 
+          labels = c("A","B"),
+          label_x = 0, label_y = 0,
+          hjust = -0.5, vjust = -0.5)
+
+ggsave2("figures/pca_hm.png", width = 12,height = 7)
 ```
 
 
