@@ -24,7 +24,7 @@ polyp_act_long <- polyp_act %>%
   mutate(TimeCat = cut(Time, breaks=c(0,14.1,19.1,24.1,29.1,34.1,39.1,44.1,49.1,54.1,60))) %>% 
   mutate(TimeCat = factor(TimeCat,
          labels=c("<15","15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60")))
-  
+
 ```
 
 This is a ggplot equivalent of of the Mosaicplots used in data exploration. This shows data aggregated across nubbins and tanks which does hide some important variation that is hard to capture graphically (see stats).  Overall however there are two clear trends;
@@ -65,3 +65,39 @@ Based on extensive model selection analysis (see [03_polyp_activity_exploration.
 fm3d =clmm2(location=Activity ~ TimeCat+TREAT+HARD, random=TANK, Hess=TRUE,  data=polyp_act_long)
 summary(fm3d)
 ```
+
+
+Let's consider whether there are interesting patterns of polyp activity in relation to the PCA and Heatmap groupings.  At least on the surface it looks as though both down and up groupings (Red and Blue on the heatmap in 02_deseq) show more closed or partial activity early in the experiment than those in the "neutral" group.
+
+
+
+```{r}
+hm_col_groups <- list(down = c("PdLb","PfLd","PfLa"), neutral = c("PdC","PdLc","PfLe","PfLb","PfC"), up = c("PdLe","PdLa","PfLc"))
+
+polyp_act_long_colgrp <- polyp_act_long %>% 
+  unite("HardCoralControl",HARD,SOFT, remove = FALSE, sep = "") %>% 
+  mutate(colgroup = "neutral") %>% 
+  mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$up,"up","neutral")) %>% 
+  mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$down,"down",colgroup))
+
+
+
+polyp_act_long_colgrp %>% na.omit() %>% 
+  group_by(colgroup,TimeCat) %>%   
+  mutate(tankcount=length(unique(TANK))) %>% 
+  group_by(colgroup,TimeCat,Activity) %>% 
+  mutate(catcount=n()) %>% 
+  ungroup() %>% 
+  mutate(TimeCat = as.factor(TimeCat)) %>% 
+  ggplot(aes(x=TimeCat)) + 
+  geom_col(aes(fill=Activity,y=catcount), position = "fill") +
+  geom_text(aes(y=0.1,label=tankcount), fill = "transparent",size=2, color="grey40") +
+  geom_vline(xintercept=4.5,color="blue") +
+  facet_grid(~colgroup) + 
+  theme_pubclean() +
+  theme(axis.text.x = element_text(angle=90)) + 
+  xlab("Days Since Start") + ylab("Proportion of Nubbins")
+
+
+```
+

@@ -57,3 +57,11 @@ activity data.
     ## AIC: 1644.142 
     ## Condition number of Hessian: 79.14231 
     ## (574 observations deleted due to missingness)
+
+Let’s consider whether there are interesting patterns of polyp activity
+in relation to the PCA and Heatmap groupings. At least on the surface it
+looks as though both down and up groupings (Red and Blue on the heatmap
+in 02\_deseq) show more closed or partial activity early in the
+experiment than those in the “neutral” group.
+
+![](04_polyp_activity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
