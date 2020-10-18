@@ -18,6 +18,8 @@ library(ggrepel)
 library(pheatmap)
 library(UpSetR)
 library(ggplot2)
+require(ggplot2); require(plyr); require(gridExtra); require(grid)
+
 ```
 
 
@@ -173,7 +175,7 @@ DE_174_database<- read.csv('/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
 #BEHAVIOUR
 upset(DE_174_database, sets= c('GPCRs',
-                       "Sensory.Nervous","Muscle","BEHAVIOUR"), 
+                       "Sensory.Nervous","Muscle","Toxins","BEHAVIOUR"), 
       order.by= 'freq', 
       keep.order= TRUE,
       sets.bar.color("orange"), 
@@ -182,7 +184,7 @@ upset(DE_174_database, sets= c('GPCRs',
       matrix.color = "gray23",
       text.scale =1) 
 #Cellular Stress
-upset(DE_174_database, sets= c("CELLULAR.STRESS","Ubiquitination","Apoptosis","Immunity","Mucus","Toxins","Antioxidants"), 
+upset(DE_174_database, sets= c("CELLULAR.STRESS","Ubiquitination","Apoptosis","Mucus","Antioxidants"), 
          order.by= 'freq', 
          keep.order= TRUE,
          sets.bar.color("orange"), 
@@ -193,7 +195,7 @@ upset(DE_174_database, sets= c("CELLULAR.STRESS","Ubiquitination","Apoptosis","I
 
 
 #RESISTING
-upset(DE_174_database, sets= c("RESISTING","Apoptosis","Authophagy","Immunity"), 
+upset(DE_174_database, sets= c("RESISTING","Authophagy","Immunity", "Apoptosis"), 
          order.by= 'freq', 
          keep.order= TRUE,
          sets.bar.color("orange"), 
