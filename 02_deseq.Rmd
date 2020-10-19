@@ -191,16 +191,16 @@ colgroup_colours <- diverging_hcl(3, palette = "Blue-Red 2")
 
 pca_plot <- pca_data3 %>% 
   ggplot(aes(y=PC1,x=PC2)) + 
-  geom_point(aes(shape=HardCoral),size=4) + 
+  geom_point(aes(shape=HardCoral, col=colgroup),size=6) + 
 #  geom_point(aes(x=-1,y=PC2, color=colgroup),size=4)+
-  geom_label_repel(aes(label=name, fill=colgroup))  + 
+  geom_label_repel(aes(label=name),point.padding = unit(0.2,"cm"))  + 
   ylab(paste0("PC1: ",percentVar2[1],"% variance")) + 
   xlab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
-  scale_fill_discrete_diverging(palette = "Blue-Red 2") +
+  scale_color_discrete_diverging(palette = "Blue-Red 2") +
 #  scale_color_discrete_qualitative(palette = "Dark 3") +
   theme(text = element_text(size=20)) + 
   theme_pubclean() +
-  guides(fill = FALSE) +
+  guides(fill = FALSE,col=FALSE) +
   theme(legend.position = "right", legend.title = element_blank())
 
 library(circlize)
@@ -209,9 +209,10 @@ col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
 hm_plot <- grid.grabExpr(draw(Heatmap(ct_heatmap_data_relative, 
                                       col = col_fun,
                                       column_km_repeats = 100,
+                                      row_km_repeats = 100,
                                       column_km = 3,
                                       row_km = 6,
-                                      row_title = NULL,
+#                                      row_title = NULL,
                                       show_row_dend = FALSE,
                                       show_row_names = FALSE,
                                       column_title_gp = gpar(fill = colgroup_colours, font = 1:3),
