@@ -15,10 +15,10 @@ library(knitr)
 library(DESeq2)
 library(tidyverse)
 library(ggrepel)
-library(pheatmap)
+# library(pheatmap)
 library(UpSetR)
-library(ggplot2)
-require(ggplot2); require(plyr); require(gridExtra); require(grid)
+# library(ggplot2)
+# require(ggplot2); require(plyr); require(gridExtra); require(grid)
 
 ```
 
