@@ -17,9 +17,9 @@ library(tidyverse)
 library(ggrepel)
 # library(pheatmap)
 library(UpSetR)
-# library(ggplot2)
-# require(ggplot2); require(plyr); require(gridExtra); require(grid)
-
+library(ggplot2)
+require(ggplot2); require(plyr); require(gridExtra); require(grid)
+library(cowplot)
 ```
 
 
@@ -173,37 +173,51 @@ DE_174_database<- read.csv('/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene
 #(location of the document needs to change)
 
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
-#BEHAVIOUR
-upset(DE_174_database, sets= c('GPCRs',
-                       "Sensory.Nervous","Muscle","Toxins","BEHAVIOUR"), 
-      order.by= 'freq', 
-      keep.order= TRUE,
-      sets.bar.color("orange"), 
-      point.size=2,
-      main.bar.color = "maroon",
-      matrix.color = "gray23",
-      text.scale =1) 
-#Cellular Stress
-upset(DE_174_database, sets= c("CELLULAR.STRESS","Ubiquitination","Apoptosis","Mucus","Antioxidants"), 
-         order.by= 'freq', 
+
+upset(DE_174_database, sets= c("Immunity", "Sensory.Nervous", "Response","CELLULAR.STRESS", "Stimulus"), 
+         order.by= c('freq','degree'),
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
          text.scale =1)  
+ 
+#CELLULAR.STRESS
+upset(DE_174_database, sets= c( "Ubiquitination","Mucus","Antioxidants", "Immunity", "CELLULAR.STRESS"), 
+         order.by= c('freq','degree'), 
+         keep.order= TRUE,
+         sets.bar.color("orange"), 
+         point.size=2,
+         main.bar.color = "maroon",
+         matrix.color = "gray23",
+         text.scale =1) 
 
-
-#RESISTING
-upset(DE_174_database, sets= c("RESISTING","Authophagy","Immunity", "Apoptosis"), 
-         order.by= 'freq', 
+#IMMUNE RESPONSE TO COMPETITION
+upset(DE_174_database, sets= c("Immunity", "Apoptosis",'Immune.activation',"Pro.apoptotic","Inflamation", "CELLULAR.STRESS" ), 
+         order.by= c('freq','degree'), 
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
          text.scale =1)
+#BEHAVIOUR
+upset(DE_174_database, sets= c('GPCRs',"Food.related","Autophagy","TissueRemodelling_Gowth","Sensory.Nervous"), 
+      order.by= c('freq','degree'), 
+      keep.order= TRUE,
+      sets.bar.color("orange"), 
+      point.size=2,
+      main.bar.color = "maroon",
+      matrix.color = "gray23",
+      text.scale =1) 
+
 
 
 
 ```
+
+```{r}
+ls()
+```
+
