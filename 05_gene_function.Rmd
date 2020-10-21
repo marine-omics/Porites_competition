@@ -170,7 +170,7 @@ plot_ExpPoritesLobo
 
 Manual Categories plots
 ```{r, gene function }
-DE_174_database<- read.csv('/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene_Function_Analysis/DE_174_database_underEdition2020.csv')
+DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
 #(location of the document needs to change)
 
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
