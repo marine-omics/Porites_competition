@@ -24,7 +24,7 @@ library(cowplot)
 
 
 
-Load differentially expressed genes between HardCoral treatments obtain data from analysis with DESeq2 (03_deseq). 
+Load differentially expressed genes between HardCoral treatments obtain data from analysis with DESeq2 (02_deseq). 
 
 ```{r, include=FALSE}
 # For the purpose of this analysis we first join 3 datasets together. 
@@ -71,7 +71,13 @@ P.cylindrica_144087anno<- readRDS("raw_data/P.cylindrica_144087anno.rda") %>%
 # Dataset 3
 #
 # Manual annotation (also location temporary, it needs more edits don't put it in the cloud yet please)
-Manual<- read.csv('raw_data/DE_193_database.csv')
+#Manual<- read.csv('raw_data/DE_193_database.csv')
+
+# This is temporary to remove columns that will be cleanup in the final version of the manual annotation database
+colnames_to_remove <- unique(c(colnames(ct_res_vsd2),colnames(P.cylindrica_144087anno)))[-1]
+
+Manual <- read.csv("raw_data/DE_174_database_underEdition2020.csv") %>% 
+  select(!any_of(colnames_to_remove))
 ```
 
 
@@ -169,7 +175,8 @@ plot_ExpPoritesLobo
 
 Manual Categories plots
 ```{r, gene function }
-DE_174_database<- read.csv('/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene_Function_Analysis/DE_174_database_underEdition2020.csv')
+#DE_174_database<- read.csv('raw_data//DE_174_database_underEdition2020.csv')
+DE_174_database <- DEG_174 %>% as.data.frame()
 #(location of the document needs to change)
 
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
@@ -181,8 +188,8 @@ upset(DE_174_database, sets= c("Immunity", "Sensory.Nervous", "Response","CELLUL
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
-         text.scale =1)  
- 
+         text.scale =1)
+
 #CELLULAR.STRESS
 upset(DE_174_database, sets= c( "Ubiquitination","Mucus","Antioxidants", "Immunity", "CELLULAR.STRESS"), 
          order.by= c('freq','degree'), 
@@ -215,9 +222,5 @@ upset(DE_174_database, sets= c('GPCRs',"Food.related","Autophagy","TissueRemodel
 
 
 
-```
-
-```{r}
-ls()
 ```
 
