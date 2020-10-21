@@ -170,55 +170,41 @@ plot_ExpPoritesLobo
 
 Manual Categories plots
 ```{r, gene function }
-DE_174_database<- read.csv('/Users/jc275567/Dropbox/Mio/Competition/PORITES/Gene_Function_Analysis/DE_174_database_underEdition2020.csv')
+DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
 #(location of the document needs to change)
 
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
 
-upset(DE_174_database, sets= c("Immunity", "Sensory.Nervous", "Response","CELLULAR.STRESS", "Stimulus"), 
+upset(DE_174_database, sets= c("Sensory.Nervous","Immunity","Cellular.Stress"), 
          order.by= c('freq','degree'),
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
-         text.scale =1)  
+         text.scale =2)  
  
-#CELLULAR.STRESS
-upset(DE_174_database, sets= c( "Ubiquitination","Mucus","Antioxidants", "Immunity", "CELLULAR.STRESS"), 
+#CELLULAR.STRESS #IMMUNE RESPONSE TO COMPETITION
+upset(DE_174_database, sets= c("Toxins.defense","Apoptosis",'Immune.activation',
+                               "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress"), 
          order.by= c('freq','degree'), 
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
-         text.scale =1) 
+         text.scale =2) 
 
-#IMMUNE RESPONSE TO COMPETITION
-upset(DE_174_database, sets= c("Immunity", "Apoptosis",'Immune.activation',"Pro.apoptotic","Inflamation", "CELLULAR.STRESS" ), 
-         order.by= c('freq','degree'), 
-         keep.order= TRUE,
-         sets.bar.color("orange"), 
-         point.size=2,
-         main.bar.color = "maroon",
-         matrix.color = "gray23",
-         text.scale =1)
-#BEHAVIOUR
-upset(DE_174_database, sets= c('GPCRs',"Food.related","Autophagy","TissueRemodelling_Gowth","Sensory.Nervous"), 
+#NERVOUS SYSTEM AND BEHAVIOUR
+upset(DE_174_database, sets= c("Behaviour","Muscle","GPCRs","Food.related","Autophagy","Sensory.Nervous"), 
       order.by= c('freq','degree'), 
       keep.order= TRUE,
       sets.bar.color("orange"), 
       point.size=2,
       main.bar.color = "maroon",
       matrix.color = "gray23",
-      text.scale =1) 
-
-
-
+      text.scale =2) 
 
 ```
 
-```{r}
-ls()
-```
 
