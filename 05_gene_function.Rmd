@@ -15,16 +15,17 @@ library(knitr)
 library(DESeq2)
 library(tidyverse)
 library(ggrepel)
-# library(pheatmap)
+library(pheatmap)
 library(UpSetR)
 library(ggplot2)
 require(ggplot2); require(plyr); require(gridExtra); require(grid)
 library(cowplot)
+
 ```
 
 
 
-Load differentially expressed genes between HardCoral treatments obtain data from analysis with DESeq2 (02_deseq). 
+Load differentially expressed genes between HardCoral treatments obtain data from analysis with DESeq2 (03_deseq). 
 
 ```{r, include=FALSE}
 # For the purpose of this analysis we first join 3 datasets together. 
@@ -71,13 +72,7 @@ P.cylindrica_144087anno<- readRDS("raw_data/P.cylindrica_144087anno.rda") %>%
 # Dataset 3
 #
 # Manual annotation (also location temporary, it needs more edits don't put it in the cloud yet please)
-#Manual<- read.csv('raw_data/DE_193_database.csv')
-
-# This is temporary to remove columns that will be cleanup in the final version of the manual annotation database
-colnames_to_remove <- unique(c(colnames(ct_res_vsd2),colnames(P.cylindrica_144087anno)))[-1]
-
-Manual <- read.csv("raw_data/DE_174_database_underEdition2020.csv") %>% 
-  select(!any_of(colnames_to_remove))
+Manual<- read.csv('raw_data/DE_193_database.csv')
 ```
 
 
@@ -175,52 +170,41 @@ plot_ExpPoritesLobo
 
 Manual Categories plots
 ```{r, gene function }
-#DE_174_database<- read.csv('raw_data//DE_174_database_underEdition2020.csv')
-DE_174_database <- DEG_174 %>% as.data.frame()
+DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
 #(location of the document needs to change)
 
 # Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
 
-upset(DE_174_database, sets= c("Immunity", "Sensory.Nervous", "Response","CELLULAR.STRESS", "Stimulus"), 
+upset(DE_174_database, sets= c("Sensory.Nervous","Immunity","Cellular.Stress"), 
          order.by= c('freq','degree'),
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
-         text.scale =1)
-
-#CELLULAR.STRESS
-upset(DE_174_database, sets= c( "Ubiquitination","Mucus","Antioxidants", "Immunity", "CELLULAR.STRESS"), 
+         text.scale =2)  
+ 
+#CELLULAR.STRESS #IMMUNE RESPONSE TO COMPETITION
+upset(DE_174_database, sets= c("Toxins.defense","Apoptosis",'Immune.activation',
+                               "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress"), 
          order.by= c('freq','degree'), 
          keep.order= TRUE,
          sets.bar.color("orange"), 
          point.size=2,
          main.bar.color = "maroon",
          matrix.color = "gray23",
-         text.scale =1) 
+         text.scale =2) 
 
-#IMMUNE RESPONSE TO COMPETITION
-upset(DE_174_database, sets= c("Immunity", "Apoptosis",'Immune.activation',"Pro.apoptotic","Inflamation", "CELLULAR.STRESS" ), 
-         order.by= c('freq','degree'), 
-         keep.order= TRUE,
-         sets.bar.color("orange"), 
-         point.size=2,
-         main.bar.color = "maroon",
-         matrix.color = "gray23",
-         text.scale =1)
-#BEHAVIOUR
-upset(DE_174_database, sets= c('GPCRs',"Food.related","Autophagy","TissueRemodelling_Gowth","Sensory.Nervous"), 
+#NERVOUS SYSTEM AND BEHAVIOUR
+upset(DE_174_database, sets= c("Behaviour","Muscle","GPCRs","Food.related","Autophagy","Sensory.Nervous"), 
       order.by= c('freq','degree'), 
       keep.order= TRUE,
       sets.bar.color("orange"), 
       point.size=2,
       main.bar.color = "maroon",
       matrix.color = "gray23",
-      text.scale =1) 
-
-
-
+      text.scale =2) 
 
 ```
+
 
