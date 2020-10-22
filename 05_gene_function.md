@@ -4,7 +4,7 @@ Natalia Andrade and Ira Cooke
 07/08/2017
 
 Load differentially expressed genes between HardCoral treatments obtain
-data from analysis with DESeq2 (03\_deseq).
+data from analysis with DESeq2 (02\_deseq).
 
 Annotating the 174 DEG\_CvsT with transcriptome annotation and manual
 annotation
@@ -25,3 +25,6 @@ colony Pd
     ## [21] "Ld"
 
 ![](05_gene_function_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+Manual Categories plots
+![](05_gene_function_files/figure-gfm/gene%20function-1.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-2.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-3.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-4.png)<!-- -->

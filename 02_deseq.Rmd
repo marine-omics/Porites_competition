@@ -107,7 +107,7 @@ To set up contrasts we first use `resultsNames()` to extract a list of fitted co
 resultsNames(dds2)
 ```
 
-Based on this we formulate the contrasts;
+Based on this the following contrasts are potentially interesting, but we will primarily focus on `contrast_ct` only.
 
 1. `contrast_ct <- c(1,-1,1,-1)` which captures genes consistently different between treatment and control across both Porites colonies
 2. `contrast_pd <- c(1,-1,0,0)` capturing genes DE between treatment and control for `Pd` only
@@ -122,28 +122,23 @@ Based on this we formulate the contrasts;
  -1/2), tidy = TRUE) %>% 
   arrange(padj) %>% 
   filter(padj<0.1)
-
-contrast_pd <- c(1,-1,0,0)
-contrast_pf <- c(0,0,1,-1)
-
-res_pd <- results(dds2,contrast = contrast_pd,tidy = TRUE) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.1)
-
-res_pf <- results(dds2,contrast = contrast_pf,tidy = TRUE) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.1)
 ```
 
 
-For the top genes differentially expressed between control and treatment we plot raw values as scatterplots.  This is just to give a feel for how strong these candidates are when looking at the raw data directly.  
+```{r, eval=FALSE}
+# This is to support later analysis that combines DE results alongside functional groupings and/or polyp activity.
+write_rds(res_ct,"cache/res_ct.rds")
+write_rds(vsd2,"cache/vsd2.rds")
+write_rds(pca_data2,"cache/pca_data2.rds")
+```
 
-Scanning through these plots I can see quite a few genes with consistent differences between both controls and the treatment values ... BUT .. there are others where the change seems to be driven by a strong change in just one of the controls (usually Pf).  This also seems to emerge from looking at the heatmap (see below).
+
+For the top genes differentially expressed between control and treatment scatterplots of the raw data provide a useful check that the statistical analysis identifies genuine differentially expressed transcripts.  
 
 ```{r}
 # For genes DE ONLY in  contrast btw Control and treatment
 
-top_genes <- res_ct %>% arrange(padj) %>% top_n(24) %>% pull(row)
+top_genes <- res_ct %>% arrange(padj) %>% top_n(12) %>% pull(row)
 
 ct_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_ct$row),] %>%
   as.data.frame() %>%
@@ -158,7 +153,7 @@ ct_genes_tidy %>%
   facet_wrap(~cluster_id,ncol = 3,scales = "free_y")
 ```
 
-Now a heatmap for all the DE genes between treatment and control. For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful. The clusters reveal some interesting patterns (not sure if worth writing about but interesting).  There is a big cluster where the Pf control has higher expression.  There are also clusters driven by higher expression in a few specific interactions (PfLa, PfLc, PdLb) for one cluster .. and (PdLa, PdLe, PfLc) for the other.  It would be fascinating if this was also evident in the behavioural data.  Other clusters are driven by an overall higher expression in Pd vs Pf (bottom small cluster).
+Now a heatmap for all the DE genes between treatment and control. For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful. The clusters reveal some interesting patterns in terms of samples (matching the PCA) and in terms of genes (identifying alternative types of molecular response to competition).  We explore this further in conjunction with the Polyp Activity data in `04_polyp_activity.Rmd`.
 
 
 ```{r}
@@ -172,59 +167,5 @@ colgroup_colours <- qualitative_hcl(3, palette = "Dark 3")
 
 Heatmap(ct_heatmap_data_relative, column_km = 3, row_km = 6, show_row_names = FALSE,column_title_gp = gpar(fill = colgroup_colours, font = 1:3))
 ```
-
-
-Finally let's try to create a composite figure including the PCA and heatmap because there are related patterns seen in both figures that we would like to make clear.
-
-```{r}
-library(cowplot)
-library(grid)
-
-hm_col_groups <- list(down = c("PdLb","PfLd","PfLa"), neutral = c("PdC","PdLc","PfLe","PfLb","PfC"), up = c("PdLe","PdLa","PfLc"))
-
-pca_data3 <- pca_data2 %>% 
-  mutate(colgroup = "neutral") %>% 
-  mutate(colgroup = ifelse(name %in% hm_col_groups$up,"up","neutral")) %>% 
-  mutate(colgroup = ifelse(name %in% hm_col_groups$down,"down",colgroup))
-
-colgroup_colours <- diverging_hcl(3, palette = "Blue-Red 2")
-
-pca_plot <- pca_data3 %>% 
-  ggplot(aes(y=PC1,x=PC2)) + 
-  geom_point(aes(shape=HardCoral),size=4) + 
-#  geom_point(aes(x=-1,y=PC2, color=colgroup),size=4)+
-  geom_label_repel(aes(label=name, fill=colgroup))  + 
-  ylab(paste0("PC1: ",percentVar2[1],"% variance")) + 
-  xlab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
-  scale_fill_discrete_diverging(palette = "Blue-Red 2") +
-#  scale_color_discrete_qualitative(palette = "Dark 3") +
-  theme(text = element_text(size=20)) + 
-  theme_pubclean() +
-  guides(fill = FALSE) +
-  theme(legend.position = "right", legend.title = element_blank())
-
-library(circlize)
-col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
-
-hm_plot <- grid.grabExpr(draw(Heatmap(ct_heatmap_data_relative, 
-                                      col = col_fun,
-                                      column_km_repeats = 100,
-                                      column_km = 3,
-                                      row_km = 6,
-                                      row_title = NULL,
-                                      show_row_dend = FALSE,
-                                      show_row_names = FALSE,
-                                      column_title_gp = gpar(fill = colgroup_colours, font = 1:3),
-                                      heatmap_legend_param = list(title="LogFC", legend_width = unit(10,"cm")))))
-
-plot_grid(pca_plot,hm_plot,ncol = 1, 
-          rel_heights = c(0.4,0.6), 
-          labels = c("A","B"),
-          label_x = 0, label_y = 0,
-          hjust = -0.5, vjust = -0.5)
-
-ggsave2("figures/pca_hm.png", width = 12,height = 7)
-```
-
 
 
