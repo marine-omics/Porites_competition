@@ -58,10 +58,14 @@ activity data.
     ## Condition number of Hessian: 79.14231 
     ## (574 observations deleted due to missingness)
 
-Let’s consider whether there are interesting patterns of polyp activity
-in relation to the PCA and Heatmap groupings. At least on the surface it
-looks as though both down and up groupings (Red and Blue on the heatmap
-in 02\_deseq) show more closed or partial activity early in the
-experiment than those in the “neutral” group.
+## Relationships between PCA, Heatmap and Polyp Activity
 
-![](04_polyp_activity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+Let’s consider whether there are interesting patterns of polyp activity
+in relation to the PCA and Heatmap groupings. In `02_deseq.Rmd` we split
+samples into three clusters based on expression profiles of genes that
+were found differentially expressed between controls and competition
+pairs. Instead of grouping the polyp activity data purely in terms of
+Porites genotype it may make sense to use these sample groupings
+instead. We explore this in the following composite plot.
+
+![](04_polyp_activity_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
