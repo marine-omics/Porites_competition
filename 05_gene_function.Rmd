@@ -207,4 +207,28 @@ upset(DE_174_database, sets= c("Behaviour","Muscle","GPCRs","Food.related","Auto
 
 ```
 
+Attempt to add FoldChange (Using Example 4 from "Querying the Data")
+```{r}
+Myfunc_down <- function(row, logFoldChange) {
+  data <- (row["log2FoldChange"] < logFoldChange)
+}
+Myfunc_up <- function(row,logFoldChange) {
+  data <- (row["log2FoldChange"] >= logFoldChange)
+}
+
+# We need to have the element only with the categories that we want
+ThreeCats<- DE_174_database %>% select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange")
+
+# This works with the example that they give in their guide. No idea why it doesn't work with our data
+upset(ThreeCats,
+      queries = list(list(query = Myfunc_down, params = list(0),
+                          color = "blue", active = T)))
+# It doesn't work
+upset(ThreeCats, sets= c("Sensory.Nervous","Immunity","Cellular.Stress"),
+      queries = list(list(query = Myfunc_down, params = list(0),
+                          color = "blue", active = T),
+                     list(query = Myfunc_up, params = list(0),
+                          color = "red", active = T)))
+
+```
 
