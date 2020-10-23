@@ -73,10 +73,13 @@ fm3d =clmm2(location=Activity ~ TimeCat+TREAT+HARD, random=TANK, Hess=TRUE,  dat
 summary(fm3d)
 ```
 
+
+
 ## Relationships between PCA, Heatmap and Polyp Activity
 
-Let's consider whether there are interesting patterns of polyp activity in relation to the PCA and Heatmap groupings.  In `02_deseq.Rmd` we split samples into three clusters based on expression profiles of genes that were found differentially expressed between controls and competition pairs.  Instead of grouping the polyp activity data purely in terms of Porites genotype it may make sense to use these sample groupings instead.  We explore this in the following composite plot.
+Let's consider whether there are interesting patterns of polyp activity in relation to the PCA and Heatmap groupings.  In `02_deseq.Rmd` we split samples into three clusters based on expression profiles of genes that were found differentially expressed between controls and competition pairs.  Instead of grouping the polyp activity data purely in terms of Porites genotype it may make sense to use these sample groupings instead.  
 
+When placed into these groupings we see that there is no significant difference in polyp activity. 
 
 ```{r}
 # The Polyp Activity Plot
@@ -85,13 +88,20 @@ hm_col_groups <- list(blue = c("PdLb","PfLd","PfLa"), grey = c("PdC","PdLc","PfL
 
 polyp_act_long_colgrp <- polyp_act_long %>% 
   unite("HardCoralControl",HARD,SOFT, remove = FALSE, sep = "") %>% 
+  filter(HARD %in% c("Pf","Pd")) %>% 
   mutate(colgroup = "neutral") %>% 
   mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$red,"red","neutral")) %>% 
   mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$blue,"blue",colgroup))
+```
+
+```{r}
+fm_pca_grp =clmm2(location=Activity ~ TimeCat+colgroup, random=TANK, Hess=TRUE,  data=polyp_act_long_colgrp)
+summary(fm_pca_grp)
+```
 
 
-
-activity_plot <- polyp_act_long_colgrp %>% na.omit() %>% 
+```{r}
+polyp_act_long_colgrp %>% na.omit() %>% 
   group_by(colgroup,TimeCat) %>%   
   mutate(tankcount=length(unique(TANK))) %>% 
   group_by(colgroup,TimeCat,Activity) %>% 
@@ -102,7 +112,7 @@ activity_plot <- polyp_act_long_colgrp %>% na.omit() %>%
   geom_col(aes(fill=Activity,y=catcount), position = "fill") +
   geom_text(aes(y=0.1,label=tankcount), fill = "transparent",size=2, color="grey40") +
   geom_vline(xintercept=4.5,color="blue") +
-  facet_grid(~colgroup) + 
+  facet_grid(HARD~colgroup) + 
   theme_pubr() +
   theme(axis.text.x = element_text(angle=90)) + 
   xlab("Days Since Start") + ylab("Proportion of Nubbins")

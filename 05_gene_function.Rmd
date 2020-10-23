@@ -15,12 +15,12 @@ library(knitr)
 library(DESeq2)
 library(tidyverse)
 library(ggrepel)
-library(pheatmap)
-library(UpSetR)
 library(ggplot2)
-require(ggplot2); require(plyr); require(gridExtra); require(grid)
 library(cowplot)
+# if(!require(devtools)) install.packages("devtools")
+# devtools::install_github("krassowski/complex-upset")
 
+library(ComplexUpset)
 ```
 
 
@@ -169,66 +169,25 @@ plot_ExpPoritesLobo
 ```
 
 Manual Categories plots
-```{r, gene function }
-DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
-#(location of the document needs to change)
-
-# Upset plots can be made much nicer (show u and than reg proportions, show which ones have this strong difference in expression)
-
-upset(DE_174_database, sets= c("Sensory.Nervous","Immunity","Cellular.Stress"), 
-         order.by= c('freq','degree'),
-         keep.order= TRUE,
-         sets.bar.color("orange"), 
-         point.size=2,
-         main.bar.color = "maroon",
-         matrix.color = "gray23",
-         text.scale =2)  
- 
-#CELLULAR.STRESS #IMMUNE RESPONSE TO COMPETITION
-upset(DE_174_database, sets= c("Toxins.defense","Apoptosis",'Immune.activation',
-                               "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress"), 
-         order.by= c('freq','degree'), 
-         keep.order= TRUE,
-         sets.bar.color("orange"), 
-         point.size=2,
-         main.bar.color = "maroon",
-         matrix.color = "gray23",
-         text.scale =2) 
-
-#NERVOUS SYSTEM AND BEHAVIOUR
-upset(DE_174_database, sets= c("Behaviour","Muscle","GPCRs","Food.related","Autophagy","Sensory.Nervous"), 
-      order.by= c('freq','degree'), 
-      keep.order= TRUE,
-      sets.bar.color("orange"), 
-      point.size=2,
-      main.bar.color = "maroon",
-      matrix.color = "gray23",
-      text.scale =2) 
-
-```
-
-Attempt to add FoldChange (Using Example 4 from "Querying the Data")
 ```{r}
-Myfunc_down <- function(row, logFoldChange) {
-  data <- (row["log2FoldChange"] < logFoldChange)
-}
-Myfunc_up <- function(row,logFoldChange) {
-  data <- (row["log2FoldChange"] >= logFoldChange)
-}
+DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
 
 # We need to have the element only with the categories that we want
-ThreeCats<- DE_174_database %>% select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange")
+ThreeCats<- DE_174_database %>% 
+  select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+```
 
-# This works with the example that they give in their guide. No idea why it doesn't work with our data
-upset(ThreeCats,
-      queries = list(list(query = Myfunc_down, params = list(0),
-                          color = "blue", active = T)))
-# It doesn't work
-upset(ThreeCats, sets= c("Sensory.Nervous","Immunity","Cellular.Stress"),
-      queries = list(list(query = Myfunc_down, params = list(0),
-                          color = "blue", active = T),
-                     list(query = Myfunc_up, params = list(0),
-                          color = "red", active = T)))
 
+```{r}
+ComplexUpset::upset(ThreeCats,
+      intersect = c("Sensory.Nervous","Immunity","Cellular.Stress"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      )
+  )
 ```
 
