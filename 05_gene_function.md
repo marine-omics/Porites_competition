@@ -4,14 +4,13 @@ Natalia Andrade and Ira Cooke
 07/08/2017
 
 Load differentially expressed genes between HardCoral treatments obtain
-data from analysis with DESeq2 (02\_deseq).
+data from analysis with DESeq2 (03\_deseq).
 
 Annotating the 174 DEG\_CvsT with transcriptome annotation and manual
 annotation
 
 Plots showing the expression of genes in the different categories and
-for the two
-genotypes
+for the two genotypes
 
 ![](05_gene_function_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->![](05_gene_function_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->![](05_gene_function_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->![](05_gene_function_files/figure-gfm/unnamed-chunk-2-4.png)<!-- -->
 
@@ -27,4 +26,7 @@ colony Pd
 ![](05_gene_function_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 Manual Categories plots
-![](05_gene_function_files/figure-gfm/gene%20function-1.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-2.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-3.png)<!-- -->![](05_gene_function_files/figure-gfm/gene%20function-4.png)<!-- -->
+
+    ## [1] "Converting non-logical columns to binary: Sensory.Nervous, Immunity, Cellular.Stress"
+
+![](05_gene_function_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
