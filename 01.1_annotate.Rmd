@@ -1,0 +1,275 @@
+---
+title: "Integrating_Trinotate_GenomeBlast_Corset"
+author: "Ira Cooke and Natalia Andrade"
+date: "21/08/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(cache=TRUE)
+options(width = 60)
+
+library(knitr)
+library(dplyr)
+library(tidyverse)
+library(stringr)
+library(seqinr)
+```
+
+# Script to integrate corset clusters to annotation information from Trinotate and GenomeBlasting
+# Loading data
+```{r, loading data}
+# Trinotate data may have multiple rows for a single transcript_id in cases where more than one predicted peptide results from it
+trinotate_data <-read_tsv("raw_data/trinotate_annotation_report_with_genes.xls") %>% rename(gene_id=`#gene_id`) %>% select(-RNAMMER,-prot_id,-prot_coords,-Pfam,-TmHMM,-eggnog,-Kegg,-gene_ontology_blast,-gene_ontology_pfam)
+#-SignalP,
+names(trinotate_data)
+##Extract _Evalue and Genes_ID
+# Function to extract GeneID, Gene Name and single e.value
+extract_GeneID <- function(go_string){
+  paste(unique(str_match_all(go_string,'^([^\\^]+)')[[1]][,2]),collapse = ",")}
+
+extract_e_value <- function(go_string){
+  paste(unique(str_match_all(go_string,'\\^E\\:([^\\^]+)')[[1]][,2]),collapse = ",")}
+
+extract_e_value2 <- function(go_string){
+  paste(unique(str_match_all(go_string,'^([^,]+)')[[1]][,2]),collapse = ",")}
+
+## For BlastX
+
+Gene_termsx<-trinotate_data %>%  dplyr::select(transcript_id,sprot_Top_BLASTX_hit)
+names(Gene_termsx)<- c("transcript_id","GeneID")
+Gene_termsx$transcript_id<- as.character(Gene_termsx$transcript_id)
+
+tbl_df(Gene_termsx)
+
+# apply function
+extract_GeneID(Gene_termsx)
+extract_e_value(Gene_termsx)
+extract_e_value2(Gene_termsx)
+
+trinotate_data$GeneID_x <- sapply(Gene_termsx$GeneID,extract_GeneID)
+Gene_termsx$E.value_x <- sapply(Gene_termsx$GeneID,extract_e_value)
+trinotate_data$E.value_x<- sapply(Gene_termsx$E.value_x,extract_e_value2)
+trinotate_data<-trinotate_data %>% select(-sprot_Top_BLASTX_hit)
+
+## For BlastP
+
+Gene_termsp<-trinotate_data %>%  dplyr::select(transcript_id,sprot_Top_BLASTP_hit)
+names(Gene_termsp)<- c("transcript_id","GeneID")
+Gene_termsp$transcript_id<- as.character(Gene_termsp$transcript_id)
+
+tbl_df(Gene_termsp)
+
+# apply function
+extract_GeneID(Gene_termsp)
+extract_e_value(Gene_termsp)
+extract_e_value2(Gene_termsp)
+
+trinotate_data$GeneID_p <- sapply(Gene_termsp$GeneID,extract_GeneID)
+Gene_termsp$E.value_p <- sapply(Gene_termsp$GeneID,extract_e_value)
+trinotate_data$E.value_p<- sapply(Gene_termsp$E.value_p,extract_e_value2)
+trinotate_data<-trinotate_data %>% select(-sprot_Top_BLASTP_hit)
+
+trinotate_data$E.value_x<- as.numeric(trinotate_data$E.value_x)
+trinotate_data$E.value_p<- as.numeric(trinotate_data$E.value_p)
+
+
+#exported to start form here next time
+saveRDS(trinotate_data,file = "data/trinotate_data_edit.rda")
+write_csv(trinotate_data,"data/trinotate_data_edit.csv")
+write_excel_csv(trinotate_data,"data/trinotate_data_edit.xlsx")
+#trinotate_data<-readRDS("data/trinotate_data_edit.rda")
+```
+
+
+# Adding info form P. lutea analysis
+```{r, P. lutea genome annotations}
+# Genome blasting data was obtain by blasting transcriptome to the predicted transcripts obtained from the Porites lutea genome. Genenious was use for this analysis, threshole of 1e10-5. The "Sequence" correspond to the predicted trasncript from P.lutea
+genomeBlast_data<- read_csv("raw_data/GenomeBlast_P.cylindrica_vs_P.lutea.csv")
+genomeBlast_data<- genomeBlast_data %>% select(Name,'E Value',Query,Sequence)
+genomeBlast_data<- genomeBlast_data %>% rename(ID_lutea=Name) %>% rename(E.value_Gblast='E Value') %>% rename(transcript_id=Query) %>% rename(transcript_lutea=Sequence)
+names(genomeBlast_data)
+
+#Adding Blastx from P.lutea gives several hits per transcript so we choose the one with the lowest p_value
+blastx_proteins_lutea<- read.delim("raw_data/plut2v1.1.proteins.blastx.outfmt6",header=FALSE,sep="") %>% select(V1,V2,V11) %>% rename(ID_lutea=V1, Blastx_lutea=V2, E.value_Blastx_lutea=V11) %>% filter(E.value_Blastx_lutea<1e-5)
+str(blastx_proteins_lutea)
+blastx_proteins_lutea<- blastx_proteins_lutea %>% 
+group_by(ID_lutea) %>% arrange(desc(E.value_Blastx_lutea))  %>% top_n(n=1,wt=ID_lutea) %>% sample_n(1)
+
+
+#Adding Blastp from P.lutea
+
+blastp_proteins_lutea<- read.delim("raw_data/plut2v1.1.proteins.blastp.outfmt6",header=FALSE,sep="") %>% select(V1,V2,V11) %>% rename(ID_lutea=V1, Blastp_lutea=V2, E.value_Blastp_lutea=V11) %>% filter(E.value_Blastp_lutea<1e-5)
+str(blastp_proteins_lutea)
+blastp_proteins_lutea<- blastp_proteins_lutea %>% 
+group_by(ID_lutea) %>% arrange(desc(E.value_Blastp_lutea))  %>% top_n(n=1,wt=ID_lutea) %>% sample_n(1)
+
+#Adding SignalP results from P.lutea
+
+SignalP_lutea<- read.delim("raw_data/plut2v1.1.proteins.signalp.out",header=FALSE,sep="") %>% slice(4:2934) %>% select(V1,V6,V9) %>% rename(ID_lutea=V1) %>% rename(score_SignalP_lutea=V6) %>% rename(SignalP_lutea=V9)
+
+#Adding P.lutea peptides# Don't know how to do it =(
+#lutea_peptides<- read.fasta("raw_data/plut2v1.1.proteins.fasta")
+#names(lutea_peptides)
+#lutea_peptides_list<-lapply(lutea_peptides,c2s) 
+#lutea_peptides_data<-as.data(lutea_peptides_data,row.names =lutea_peptides)
+##Check how to add
+
+#P.lutea annotation
+
+lutea_data<-left_join(genomeBlast_data,blastp_proteins_lutea,by="ID_lutea") %>% left_join(blastx_proteins_lutea,by='ID_lutea') %>% left_join(SignalP_lutea,by='ID_lutea')
+
+
+#We joint this 2 data sets by transcript_id
+
+cylindrica_transcriptome.all<- left_join(trinotate_data,lutea_data,by="transcript_id")
+
+
+saveRDS(cylindrica_transcriptome.all,file = "data/cylindrica_transcriptome.all_anno.rda")
+write_csv(cylindrica_transcriptome.all,"data/cylindrica_transcriptome.all_anno.csv")
+write_excel_csv(cylindrica_transcriptome.all,"data/cylindrica_transcriptome.all_anno.xlsx")
+#cylindrica_transcriptome.all<-readRDS("data/cylindrica_transcriptome.all_anno.rda")
+```
+
+```{r, annotating clusters}
+# Cluster data generally has multiple rows per cluster_id but only one per transcript_id since clusters may be composed of multiple transcripts 
+
+cluster_data <- read.delim("~/Dropbox/natalia_competition/Porites_competition/DESeq2/raw_data/03-clusters.txt",stringsAsFactors = FALSE, header = FALSE)
+names(cluster_data) <- c("transcript_id","cluster_id")
+
+counts <- read_tsv("~/Dropbox/natalia_competition/Porites_competition/DESeq2/raw_data/03-counts.txt") %>% rename(cluster_id=X1)
+
+# The result of this left_join is an increase in the number of rows over "cluster_data" because Anno_data has multiple rows per transcript_id
+
+cluster_data <- counts %>% left_join(cluster_data,by="cluster_id")
+
+corset_data_anno <- cluster_data %>% left_join(cylindrica_transcriptome.all, by="transcript_id")
+
+# we replace NAs by "."
+str(corset_data_anno)
+corset_data_anno[]<- lapply(corset_data_anno, as.character)
+
+corset_data_anno$Blastp_lutea<-as.character(corset_data_anno$Blastp_lutea)
+corset_data_anno$Blastx_lutea<-as.character(corset_data_anno$Blastx_lutea)
+corset_data_anno$score_SignalP_lutea<-as.character(corset_data_anno$score_SignalP_lutea)
+corset_data_anno$SignalP_lutea<-as.character(corset_data_anno$SignalP_lutea)
+str(corset_data_anno)
+corset_data_anno[,20:31][is.na(corset_data_anno[,20:31])] <- "."
+str(corset_data_anno[,20:31])
+
+############################# scoring annotations ############################# 
+
+# This is to create a row "score" which is higher for better annotated transcripts.
+ann_scores <- apply(corset_data_anno,1,function(row){
+  sum(row != ".")
+})
+corset_data_anno <- cbind(corset_data_anno,ann_scores)
+
+# Adding to the score the lenght of the transcript and predicted protein
+corset_data_anno <- corset_data_anno %>% mutate(ts_len = str_length(transcript)/max(str_length(transcript))) %>%  mutate(pep_len = str_length(transcript)/max(str_length(transcript))) %>% mutate(ann_scores=ann_scores+ts_len+pep_len)
+
+# Now we pick the row with the top score.  If there are multiple rows with the same score just pick one at random
+clusters144087_anno <- corset_data_anno %>% group_by(cluster_id) %>% top_n(n=1,wt=ann_scores) %>% sample_n(1)
+names(clusters144087_anno )
+
+str(clusters144087_anno )
+clusters144087_anno$E.value_Blastp_lutea<- as.numeric(clusters144087_anno$E.value_Blastp_lutea,strict=TRUE)
+clusters144087_anno$E.value_Blastx_lutea<- as.numeric(clusters144087_anno$E.value_Blastx_lutea,strict=TRUE)
+clusters144087_anno$E.value_x<- as.numeric(clusters144087_anno$E.value_x)
+clusters144087_anno$E.value_p<- as.numeric(clusters144087_anno$E.value_p)
+
+#Save in case R crash in next stepts
+saveRDS(clusters144087_anno,file = "data/clusters144087_anno_inter.rda")
+write_csv(clusters144087_anno,"data/clusters144087_anno_inter.csv")
+write_excel_csv(clusters144087_anno,"data/clusters144087_anno_inter.xlsx")
+#cylindrica_transcriptome.all<-readRDS("data/clusters144087_anno_inter.rda")
+
+```
+#Choosing Best blast 
+```{r,chossing best blas}
+#If the cluster has a P.lutea hit we choose that one
+clusters144087_anno<- readRDS('data/clusters144087_anno_inter.rda')
+ForBest_blast<- clusters144087_anno %>% select(cluster_id,E.value_x,E.value_p,E.value_Blastp_lutea,E.value_Blastx_lutea)
+#Choosing best blast for P.lutea # Try to make into a function when I have time
+# First we create columns with the differences btw  E.values Ps and E.values Xs, for trinotae and lutea results
+ForBest_blast<- mutate(ForBest_blast , luteaP.luteaX=E.value_Blastp_lutea-E.value_Blastx_lutea )
+
+ForBest_blast <- mutate(ForBest_blast, trinoP.trinoX=E.value_p-E.value_x)
+
+#Then we creat a logic column to indicate NA for the 4 evalues
+ForBest_blast<- ForBest_blast %>% mutate(NA.trinoP=is.na(E.value_p)) %>% mutate(NA.trinoX=is.na(E.value_x)) %>% mutate(NA.luteaP=is.na(E.value_Blastp_lutea)) %>% mutate(NA.luteaX=is.na(E.value_Blastx_lutea))
+
+#We choose best blast from lutea except when there is no result. In this case we always choose best trinotate blasting
+ForBest_blast<- ForBest_blast %>% mutate(ChooseTrino=((NA.luteaP==TRUE) & (NA.luteaX==TRUE)))
+#Now we create the logic columns of when to choose each blast
+ForBest_blast<- ForBest_blast %>% 
+  mutate(Choose_luteaP=((ChooseTrino==FALSE) & 
+                           ( ( (luteaP.luteaX<=0) & !is.na(luteaP.luteaX) ) | ( (NA.luteaX==TRUE) & (NA.luteaP==FALSE) ) ) ))
+
+ForBest_blast<- ForBest_blast %>% 
+  mutate(Choose_luteaX=((ChooseTrino==FALSE) & 
+                          ( ( (luteaP.luteaX>0) & !is.na(luteaP.luteaX) ) | ( (NA.luteaX==FALSE) & (NA.luteaP==TRUE) ) ) ))
+
+ForBest_blast<- ForBest_blast %>% 
+  mutate(Choose_trinoP=((ChooseTrino==TRUE) & 
+                          ( ( (trinoP.trinoX<=0) & !is.na(trinoP.trinoX) ) | ( (NA.trinoX==TRUE) & (NA.trinoP==FALSE) ) ) ))
+
+
+ForBest_blast<- ForBest_blast %>% 
+  mutate(Choose_trinoX=((ChooseTrino==TRUE) & 
+                          ( ( (trinoP.trinoX>0) & !is.na(trinoP.trinoX) ) | ( (NA.trinoX==FALSE) & (NA.trinoP==TRUE) ) ) ))
+
+
+#write file to choose best blast
+saveRDS(ForBest_blast,file = "data/ForBest_blast.rda")
+write_csv(ForBest_blast, "data/ForBest_blast.csv")
+write_excel_csv(ForBest_blast, "data/ForBest_blast.xlsx")
+
+```
+
+#Now create the column with best blast and column with the corresponding, evalue
+```{r, best blast column}
+Bestblast<- ForBest_blast %>% select(cluster_id, Choose_luteaP,Choose_luteaX,Choose_trinoP,Choose_trinoX)
+
+Bestblast<- left_join(clusters144087_anno, Bestblast, by='cluster_id')
+
+trinoP<-Bestblast %>% filter(Choose_trinoP==TRUE) %>% rename(GeneID_BestP=GeneID_p) %>% rename(E.value_Bestp = E.value_p) %>% select(cluster_id,GeneID_BestP,E.value_Bestp)
+trinoX<- Bestblast %>% filter(Choose_trinoX==TRUE) %>% rename(GeneID_BestX=GeneID_x) %>% rename(E.value_Bestx = E.value_x) %>% select(cluster_id,GeneID_BestX,E.value_Bestx)
+luteaX<- Bestblast %>% filter(Choose_luteaX==TRUE) %>% rename(GeneID_BestLX=Blastx_lutea) %>% rename(E.value_BestLx = E.value_Blastx_lutea) %>% select(cluster_id,GeneID_BestLX,E.value_BestLx)
+luteaP<- Bestblast %>% filter(Choose_luteaP==TRUE) %>% rename(GeneID_BestLP=Blastp_lutea) %>% rename(E.value_BestLp = E.value_Blastp_lutea) %>% select(cluster_id,GeneID_BestLP,E.value_BestLp)
+
+
+Bestblast<- Bestblast %>% left_join(trinoP, by="cluster_id") %>% left_join(trinoX, by="cluster_id") %>% left_join(luteaX, by="cluster_id") %>% left_join(luteaP, by="cluster_id")
+
+Bestblast<-Bestblast %>% unite(BEST_E.value, c(E.value_Bestp,E.value_Bestx,E.value_BestLx,E.value_BestLp),remove=FALSE)
+Bestblast[,41:48][is.na(Bestblast[,41:48])] <- "."
+Bestblast<-Bestblast %>% unite(BEST_BLAST, c(GeneID_BestLP,GeneID_BestLX,GeneID_BestP,GeneID_BestX), sep="," ,remove=FALSE)
+
+#saveRDS(Bestblast,file = "data/Bestblast_allinfo.rda")
+#write_csv(Bestblast, "data/Bestblast_allinfo.csv")
+
+```
+
+# To get GO_terms, KO, protein names, functions and Go ids we export the BestBlast results and we process it with in the Uniprot web site
+#add KO and Go
+```{r,add all uniprot info}
+# Exporting Uniprot Ids and also e.value to clean the column
+names(Bestblast)
+BestBlast_Uniprot<- Bestblast %>% select(BEST_BLAST, cluster_id, BEST_E.value)
+#write_csv(BestBlast_Uniprot,'data/BestBlast_Uniprot.csv')
+
+Uniprot_info<- read_xlsx('data/Uniprot_info.xlsx')%>% rename('BEST_BLAST'='Entry name')%>% rename('GO_terms'='Gene ontology IDs')
+Clean_evalue_BestBlas<- read.csv('data/BestBlast_Uniprot.csv')
+
+P.cylindrica_144087anno<- Bestblast %>% select(-BEST_BLAST,-BEST_E.value,-GeneID_x,-E.value_x,-GeneID_p,-E.value_p,-Blastp_lutea,-E.value_Blastp_lutea,-Blastx_lutea,-E.value_Blastx_lutea,-ann_scores,-ts_len,-pep_len,-lutea_P.luteaX,-Choose_luteaP,-Choose_luteaX,-Choose_trinoP,-Choose_trinoX,-E.value_BestLp,-E.value_BestLx,-E.value_Bestx, -E.value_Bestp,-GeneID_BestP,-GeneID_BestX,-GeneID_BestLP,-GeneID_BestLX)
+
+P.cylindrica_144087anno<-left_join(P.cylindrica_144087anno,Clean_evalue_BestBlas,by='cluster_id')
+
+P.cylindrica_144087anno<- left_join(P.cylindrica_144087anno, Uniprot_info, by='BEST_BLAST')
+
+#saveRDS(P.cylindrica_144087anno,file = "data/P.cylindrica_144087anno.rda")
+#write_csv(P.cylindrica_144087anno, "data/P.cylindrica_144087anno.csv")
+P.cylindrica_144087anno<- readRDS("data/P.cylindrica_144087anno.rda")
+```
