@@ -9,5 +9,15 @@ hpc/psytrans/species2_good.PdPf_transfuse95_cons.fa
 hpc/psytrans/run_PPdPf_busco/full_table_PPdPf_busco.tsv
 hpc/psytrans/run_PPdPf_busco/missing_busco_list_PPdPf_busco.tsv
 hpc/psytrans/run_PPdPf_busco/short_summary_PPdPf_busco.txt
+
+
 hpc/trinotate/trinotate_annotation_report_nogenes.xls
 hpc/trinotate/trinotate_annotation_report_with_genes.xls
+hpc/trinotate/blastx.outfmt6
+hpc/trinotate/blastp.outfmt6
+
+hpc/interpro/PdPf_transfuse95.tsv
+hpc/Annotation/blast_plutea/GenomeBlast_P.cylindrica_vs_P.lutea.csv
+hpc/Annotation/blast_plutea/plut2v1.1.proteins.blastx.outfmt6
+hpc/Annotation/blast_plutea/plut2v1.1.proteins.blastp.outfmt6
+hpc/Annotation/blast_plutea/plut2v1.1.proteins.signalp.out

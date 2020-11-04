@@ -54,7 +54,6 @@ this the relative change in expression is plotted (relative to the mean
 for a gene) so that clustering is meaningful. The clusters reveal some
 interesting patterns in terms of samples (matching the PCA) and in terms
 of genes (identifying alternative types of molecular response to
-competition). We explore this further in conjunction with the Polyp
-Activity data in `04_polyp_activity.Rmd`.
+competition).
 
-![](02_deseq_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](02_deseq_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->

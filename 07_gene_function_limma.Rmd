@@ -1,0 +1,80 @@
+---
+title: "Gene function analysis"
+author: "Natalia Andrade and Ira Cooke"
+date: "07/08/2017"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(cache=TRUE)
+options(width = 60)
+
+library(knitr)
+library(DESeq2)
+library(tidyverse)
+library(readxl)
+library(ggrepel)
+library(ggplot2)
+library(cowplot)
+# if(!require(devtools)) install.packages("devtools")
+# devtools::install_github("krassowski/complex-upset")
+
+#library(ComplexUpset)
+```
+
+Gene function analysis is based on the following datasets;
+  - Functional annotations created in `01_annotate` for all clusters
+  - Differential expression analysis (from `02_deseq.Rmd`) to select genes DE between control and treatment
+  - Manual annotations created by curating automatic annotations along with literature searches for DE genes
+  - K-means clustering groups which identify genes (Corset clusters) identified in the heatmap (see `04_polyp_activity.Rmd`)
+  
+```{r, include=FALSE}
+# For the purpose of this analysis we first join 3 datasets together. 
+# Dataset 1 is the differential expression statistics and normalized counts for all transcripts
+# Dataset 2 is the annotation information for P.cylindrica transcripts
+# Dataset 3 is a table of manual functional annotations for key genes
+
+#
+# Dataset 1
+#
+if (file.exists("cache/dds2.rds")) {
+    dds2 <- read_rds("cache/dds2.rds")
+} else {
+  stop("Nothing in cache/dds2.rds. You must run 02_DESeq.Rmd first")
+}
+
+efit <- read_rds("cache/efit.rds")
+limma_ct <- topTable(efit,number=Inf) %>% filter(adj.P.Val<0.1)
+
+ct_limma_ntd2 <- counts(dds2, normalized=TRUE)[rownames(limma_ct),]
+
+```
+
+
+```{r}
+#
+# Dataset 2
+#
+# Transcriptome annotation 
+automatic_annotations <- read_rds("cache/annotated_clusters_Porites.rda")
+
+colnames_to_exclude <- colnames(automatic_annotations)[-1]
+
+# Dataset 3
+#
+# Manual annotation
+manual_annotations <- read_excel("raw_data/DE_174_database.xlsx") %>% 
+  select(!any_of(colnames_to_exclude)) %>% 
+  select(-log2FoldChange)
+```
+
+
+```{r}
+ct_limma_ntd2_annotated <- ct_limma_ntd2 %>% 
+  as.data.frame() %>% 
+  rownames_to_column("cluster_id") %>% 
+  left_join(automatic_annotations)
+```
+

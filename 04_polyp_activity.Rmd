@@ -11,18 +11,14 @@ library(tidyverse)
 library(ordinal)
 library(cowplot)
 library(grid)
-library(circlize)
-library(colorspace)
 library(ggrepel)
 library(DESeq2)
 library(ggpubr)
-library(ComplexHeatmap)
 ```
 
 ```{r}
 polyp_act<-read_csv("raw_data/Porites_polypact.csv") %>% 
-  mutate_if(is.numeric, as.factor) 
-
+  mutate_if(is.numeric, as.factor)
 
 polyp_act_long <- polyp_act %>% 
   pivot_longer(cols = starts_with("DAY"), names_to="Time", values_to="Activity") %>% 
@@ -32,8 +28,21 @@ polyp_act_long <- polyp_act %>%
   mutate(TimeCat = cut(Time, breaks=c(0,14.1,19.1,24.1,29.1,34.1,39.1,44.1,49.1,54.1,60))) %>% 
   mutate(TimeCat = factor(TimeCat,
          labels=c("<15","15-20","20-25","25-30","30-35","35-40","40-45","45-50","50-55","55-60")))
-
 ```
+
+Summarise the distribution of replicates across experimental factors.
+
+```{r}
+polyp_act_long %>% 
+  group_by(TimeCat,TANK,HARD,TREAT,SOFT) %>% 
+  summarise(count=n()) %>% 
+  ggplot(aes(x=TimeCat)) + 
+  geom_tile(aes(fill=as.factor(count),y=TANK)) +
+  geom_point(aes(y=TANK,color=SOFT),size=0.5) +
+  facet_wrap(~HARD*TREAT,nrow = 1) + theme(axis.text.x = element_text(angle=90)) + 
+  scale_fill_grey()
+```
+
 
 This is a ggplot equivalent of of the Mosaicplots used in data exploration. This shows data aggregated across nubbins and tanks which does hide some important variation that is hard to capture graphically (see stats).  Overall however there are two clear trends;
 
@@ -73,131 +82,15 @@ fm3d =clmm2(location=Activity ~ TimeCat+TREAT+HARD, random=TANK, Hess=TRUE,  dat
 summary(fm3d)
 ```
 
-
-
-## Relationships between PCA, Heatmap and Polyp Activity
-
-Let's consider whether there are interesting patterns of polyp activity in relation to the PCA and Heatmap groupings.  In `02_deseq.Rmd` we split samples into three clusters based on expression profiles of genes that were found differentially expressed between controls and competition pairs.  Instead of grouping the polyp activity data purely in terms of Porites genotype it may make sense to use these sample groupings instead.  
-
-When placed into these groupings we see that there is no significant difference in polyp activity. 
+## Mesenteric Filament Data
 
 ```{r}
-# The Polyp Activity Plot
-#
-hm_col_groups <- list(blue = c("PdLb","PfLd","PfLa"), grey = c("PdC","PdLc","PfLe","PfLb","PfC"), red = c("PdLe","PdLa","PfLc"))
+mesenteries_data <- readxl::read_excel("~/Dropbox/natalia_competition/Porites_competition/Mesentries Obsv_Bothcorals.xlsx") %>%
+  dplyr::rename(HARD=`Hard corasls`) %>% 
+  filter(HARD %in% c("Pa","Pc")) %>% 
+  mutate(HARD = ifelse(HARD=="Pa","Pd","Pf"))
 
-polyp_act_long_colgrp <- polyp_act_long %>% 
-  unite("HardCoralControl",HARD,SOFT, remove = FALSE, sep = "") %>% 
-  filter(HARD %in% c("Pf","Pd")) %>% 
-  mutate(colgroup = "neutral") %>% 
-  mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$red,"red","neutral")) %>% 
-  mutate(colgroup = ifelse(HardCoralControl %in% hm_col_groups$blue,"blue",colgroup))
-```
-
-```{r}
-fm_pca_grp =clmm2(location=Activity ~ TimeCat+colgroup, random=TANK, Hess=TRUE,  data=polyp_act_long_colgrp)
-summary(fm_pca_grp)
+mesenteries_groups <- mesenteries_data %>% unite("pair",HARD,Softies,sep="") %>% pull(pair) %>% unique()
 ```
 
 
-```{r}
-polyp_act_long_colgrp %>% na.omit() %>% 
-  group_by(colgroup,TimeCat) %>%   
-  mutate(tankcount=length(unique(TANK))) %>% 
-  group_by(colgroup,TimeCat,Activity) %>% 
-  mutate(catcount=n()) %>% 
-  ungroup() %>% 
-  mutate(TimeCat = as.factor(TimeCat)) %>% 
-  ggplot(aes(x=TimeCat)) + 
-  geom_col(aes(fill=Activity,y=catcount), position = "fill") +
-  geom_text(aes(y=0.1,label=tankcount), fill = "transparent",size=2, color="grey40") +
-  geom_vline(xintercept=4.5,color="blue") +
-  facet_grid(HARD~colgroup) + 
-  theme_pubr() +
-  theme(axis.text.x = element_text(angle=90)) + 
-  xlab("Days Since Start") + ylab("Proportion of Nubbins")
-
-```
-
-
-```{r}
-# PCA Plot
-#
-pca_data2 <- read_rds("cache/pca_data2.rds")
-percentVar2 <- round(100 * attr(pca_data2, "percentVar"))
-
-pca_data3 <- pca_data2 %>% 
-  mutate(colgroup = "neutral") %>% 
-  mutate(colgroup = ifelse(name %in% hm_col_groups$red,"red","neutral")) %>% 
-  mutate(colgroup = ifelse(name %in% hm_col_groups$blue,"blue",colgroup))
-
-colgroup_colours <- diverging_hcl(3, palette = "Blue-Red 2")
-
-pca_plot <- pca_data3 %>% 
-  ggplot(aes(y=PC1,x=PC2)) + 
-  geom_point(aes(shape=HardCoral, col=colgroup),size=4) + 
-#  geom_point(aes(x=-1,y=PC2, color=colgroup),size=4)+
-  geom_label_repel(aes(label=name),point.padding = unit(0.2,"cm"))  + 
-  ylab(paste0("PC1: ",percentVar2[1],"% variance")) + 
-  xlab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
-  scale_color_discrete_diverging(palette = "Blue-Red 2") +
-#  scale_color_discrete_qualitative(palette = "Dark 3") +
-  theme(text = element_text(size=20)) + 
-  theme_pubr() +
-  guides(fill = FALSE,col=FALSE) +
-  theme(legend.position = "right", legend.title = element_blank())
-
-
-```
-
-
-```{r}
-# Heatmap
-#
-vsd2 <- read_rds("cache/vsd2.rds")
-res_ct <- read_rds("cache/res_ct.rds")
-
-ct_genes_tidy <- assay(vsd2)[which(rownames(vsd2) %in% res_ct$row),] %>%
-  as.data.frame() %>%
-  rownames_to_column("cluster_id")
-
-ct_heatmap_data <- ct_genes_tidy %>%
-  as.data.frame() %>%
-  column_to_rownames("cluster_id")
-
-ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data))
-
-# Perform kmeans clustering and save the result in cache.
-# There is some randomness in this so we save it for consistency
-# This also allows transcripts within cluster to be extracted in later scripts
-#
-if ( file.exists("cache/row_km.rds")){
-  row_kmeans <- read_rds("cache/row_km.rds")
-} else {
-  row_kmeans <- kmeans(ct_heatmap_data_relative,centers = 5,nstart = 100)
-  write_rds(row_kmeans,"cache/row_km.rds")
-}
-
-
-col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
-hm <- Heatmap(ct_heatmap_data_relative, 
-                                      col = col_fun,
-                                      column_km_repeats = 100,
-                                      # row_km_repeats = 100,
-                                      column_km = 3,
-                                      row_split = row_kmeans$cluster,
-                                      show_row_dend = FALSE,
-                                      show_row_names = FALSE,
-                                      column_title_gp = gpar(fill = colgroup_colours, font = 1:3),
-                                      heatmap_legend_param = list(title="LogFC", legend_width = unit(10,"cm")))
-
-hm_plot <- grid.grabExpr(draw(hm))
-
-plot_grid(activity_plot,pca_plot,hm_plot,ncol = 1, 
-          rel_heights = c(0.3,0.3,0.4), 
-          labels = c("A","B","C"),
-          label_x = 0, label_y = 0,
-          hjust = -0.5, vjust = -0.5)
-
-ggsave2("figures/pca_hm.png", width = 12,height = 10)
-```
