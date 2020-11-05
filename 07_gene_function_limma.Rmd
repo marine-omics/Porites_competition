@@ -58,16 +58,9 @@ ct_limma_ntd2 <- counts(dds2, normalized=TRUE)[rownames(limma_ct),]
 # Dataset 2
 #
 # Transcriptome annotation 
-automatic_annotations <- read_rds("cache/annotated_clusters_Porites.rda")
-
-colnames_to_exclude <- colnames(automatic_annotations)[-1]
-
-# Dataset 3
-#
-# Manual annotation
-manual_annotations <- read_excel("raw_data/DE_174_database.xlsx") %>% 
-  select(!any_of(colnames_to_exclude)) %>% 
-  select(-log2FoldChange)
+# We select key columns here for readability
+automatic_annotations <- read_rds("raw_data/annotated_clusters_porites.rda") %>% 
+  select(cluster_id,transcript_id,RNAMMER,Pfam,SignalP,TmHMM,eggnog,Kegg,ipro_pfam,ipro_pfam_desc,ipr_go,best_swissprot,Entry,`Protein names`,`Gene names`,Organism,Keywords)
 ```
 
 

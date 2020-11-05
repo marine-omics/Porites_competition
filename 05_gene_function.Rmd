@@ -45,24 +45,9 @@ if (file.exists("cache/dds2.rds")) {
   stop("Nothing in cache/dds2.rds. You must run 02_DESeq.Rmd first")
 }
 
-vsd2 <- varianceStabilizingTransformation(dds2, blind=FALSE)
-
-contrast_ct <- list(c("HardCoralTrtPd_C","HardCoralTrtPf_C"),c("HardCoralTrtPd_T","HardCoralTrtPf_T"))
-
-#Then we extract the results for the contrast between Control and Treatment
-res_ct <- results(dds2,contrast = contrast_ct,listValues=c(1/2,
- -1/2), tidy = TRUE) %>% 
-  arrange(padj) %>% 
-  filter(padj<0.1) # Total 174 genes
-
-# (Old version) Transformed expression per sample (Dataset 1)
-# This gives results that are hard to reconcile against logFC when there are many zeros
-#
-# ct_res_vsd2 <- assay(vsd2)[which(rownames(vsd2) %in% res_ct$row),] %>%
-#   as.data.frame() %>%
-#   rownames_to_column("cluster_id") %>% 
-#   right_join(res_ct, by=c("cluster_id"="row"))
-
+res_ct <- read_rds("cache/res_ct.rds")
+vsd2 <- read_rds("cache/vsd2.rds")
+quantifiable_clusters <- read_rds("cache/quantifiable_clusters.rds")
 
 # (New) Normalized counts per sample (Dataset 1)
 ct_res_ntd2 <- counts(dds2, normalized=TRUE)[res_ct$row,] %>%
@@ -76,7 +61,9 @@ ct_res_ntd2 <- counts(dds2, normalized=TRUE)[res_ct$row,] %>%
 # Dataset 2
 #
 # Transcriptome annotation 
-automatic_annotations <- read_rds("cache/annotated_clusters_Porites.rda")
+# We select key columns here for readability
+automatic_annotations <- read_rds("raw_data/annotated_clusters_porites.rda") %>% 
+  select(cluster_id,transcript_id,RNAMMER,Pfam,SignalP,TmHMM,eggnog,Kegg,ipro_pfam,ipro_pfam_desc,ipr_go,best_swissprot,Entry,Protein_names,Gene_names,Organism,Keywords,swissprot_go)
 
 colnames_to_exclude <- colnames(automatic_annotations)[-1]
 
@@ -92,12 +79,15 @@ manual_annotations <- read_excel("raw_data/DE_174_database.xlsx") %>%
 ```{r join_datasets}
 # Joining all three datasets for the DEG
 #
-annotated_DEG_174 <- ct_res_ntd2 %>% 
+annotated_DEG <- ct_res_ntd2 %>% 
   left_join(automatic_annotations) %>% 
   left_join(manual_annotations)
+
+annotated_quantifiable <- quantifiable_clusters %>% 
+    left_join(automatic_annotations) 
 ```
 
-Our focus initially is on the 174 genes differentially expressed between control and treatment. Raw (normalised) counts for a handful of the top genes are plotted here as a sanity check to ensure that they look genuinely differentially expressed.
+Our focus initially is on the genes differentially expressed between control and treatment. Raw (normalised) counts for a handful of the top genes are plotted here as a sanity check to ensure that they look genuinely differentially expressed.
 
 ```{r}
 sample_data <- read_csv("raw_data/Samples_data.csv",trim_ws = TRUE)
@@ -106,30 +96,37 @@ colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","P
 
 # For genes DE ONLY in  contrast btw Control and treatment
 
-top_genes <- annotated_DEG_174 %>% slice_min(padj, n=9, with_ties=F) %>%  pull(cluster_id)
+top_genes <- annotated_DEG %>% slice_min(padj, n=9, with_ties=F) %>%  pull(cluster_id)
 
-annotated_DEG_174 %>%
-  filter(cluster_id %in% top_genes) %>% 
-  select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) %>% 
-  pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
-  left_join(sample_data) %>% 
-  ggplot(aes(x=treat, y=log(count), colour=HardCoral)) +
-  geom_jitter(aes(shape=SoftCoralControl), height=0, width=0.1) +
-  facet_wrap(~cluster_id,ncol = 3,scales = "free_y") +
-  ggtitle("Top differentially expressed genes in treatment (competition) versus control")
+plot_genes <- function(gene_list){
+  annotated_DEG %>%
+    filter(cluster_id %in% gene_list) %>% 
+    select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) %>% 
+    pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
+    left_join(sample_data) %>% 
+    ggplot(aes(x=treat, y=log(count), colour=HardCoral)) +
+    geom_jitter(aes(shape=SoftCoralControl), height=0, width=0.1) +
+    facet_wrap(~cluster_id,ncol = 3,scales = "free_y") 
+}
+
+
+plot_genes(top_genes)
 ```
 
 
-## Function of genes in PCA cluster
+## Function of genes in PCA clusters
 
 ```{r}
 vsd2 <- read_rds("cache/vsd2.rds")
 res_ct <- read_rds("cache/res_ct.rds")
 row_kmeans <- read_rds("cache/row_km.rds")
 
+#annotated_DEG %>% add_column(hm_cluster = as.numeric(row_kmeans$cluster)) %>% write_tsv("raw_data/annotated_DEG.tsv")
+annotated_DEG_hm <- annotated_DEG %>% add_column(hm_cluster = as.numeric(row_kmeans$cluster))
+
 write_cluster <- function(clnum){
   cluster_ids <- names(which(row_kmeans$cluster==clnum))
-  DE_cl <- annotated_DEG_174 %>% filter(cluster_id %in% cluster_ids)
+  DE_cl <- annotated_DEG %>% filter(cluster_id %in% cluster_ids)
   write_tsv(DE_cl,paste("cache/DE_cl",clnum,".tsv",sep = "",collapse = ""))  
 }
 
@@ -137,62 +134,160 @@ for(i in 1:5){
   write_cluster(i)
 }
 
+DE_cl1 <- read_tsv("cache/DE_cl1.tsv")
 DE_cl2 <- read_tsv("cache/DE_cl2.tsv")
+DE_cl3 <- read_tsv("cache/DE_cl3.tsv")
 DE_cl4 <- read_tsv("cache/DE_cl4.tsv")
+DE_cl5 <- read_tsv("cache/DE_cl5.tsv")
+```
+
+Cluster 5 is expressed strongly in three samples and not expressed at all in others. This cluster aligns well with the PCA.  This cluster is massively enriched in secreted proteins with `r sum(!is.na(DE_cl5$SignalP))` out of `r nrow(DE_cl5)` having a Signal peptide.
+
+```{r}
+plot_genes(DE_cl5$cluster_id)
+
+sum(!is.na(DE_cl5$SignalP))
 
 ```
 
-
+Cluster 2 represents the opposite end of the PCA.  It has a similar pattern except that three different samples are expressed in this case.  Of the 10 proteins in this cluster four are involved in oxidative metabolism (homologues of COX1, CYB, COX3, COX2).
 
 ```{r}
-# For gene classify as RESISTING related genes
+plot_genes(DE_cl2$cluster_id)
+```
 
-topResistingPorites<- DEG_174 %>% arrange(padj) %>% filter(RESISTING==TRUE) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) 
+Most genes in cluster 1 are expressed in all samples but generally seem up in competition compared with control.
 
-plot_portiesR<- topResistingPorites %>%  
-    pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
-    left_join(sample_data) %>% 
-    ggplot(aes(x=treat, y=log(count), colour= HardCoral)) + 
-    geom_boxplot() + 
-    facet_wrap( ~ cluster_id ,scales = "free_y")+
-  ggtitle("Differentially expressed genes in functional category (RESISTANCE) in treatment versus control")
+```{r}
+plot_genes(DE_cl1$cluster_id)
+```
 
-plot_portiesR
+Cluster 4 contains genes with reduced expression in competition compared to controls.
 
-# For genes classify as CELLULAR STRESS related
+```{r}
+plot_genes(DE_cl4$cluster_id)
+```
 
-topCellularstressPorites<- DEG_174 %>% arrange(padj) %>% filter(CELLULAR.STRESS==TRUE) %>% select(cluster_id, PdLa,PdLb, PdLc,PdLe, PdC, PfLa, PfLb, PfLc, PfLd, PfLe, PfC) 
-plot_portiesCS<- topCellularstressPorites %>%  
-    pivot_longer(c(-cluster_id),names_to = "ID",values_to="count") %>%
-    left_join(sample_data) %>% 
-    ggplot(aes(x=treat, y=log(count), colour= HardCoral)) + 
-    geom_boxplot() + 
-    facet_wrap( ~ cluster_id ,scales = "free_y") +
-  ggtitle("Differentially expressed genes in functional category (CELLULAR STRESS) in treatment versus control")
-plot_portiesCS
+Genes in cluster 3 don't fit into any of the above categories.  In general these genes have divergent expression between the two controls. Although called as differentially expressed they have borderline p-values.
+
+```{r}
+plot_genes(DE_cl3$cluster_id)
+```
+
+## GO Term Enrichment Analysis
+
+Using GO terms obtained from Swissprot we performed a GO enrichment analysis in two ways;
+
+  1. Using the entire set of differentially expressed genes at the target set and all quantifiable clusters as the background
+  2. Separately for each of the five heatmap row clusters
+
+```{r}
+library(topGO)
+
+gostring2vector <- function(gostring){
+   str_split(gostring,";")[[1]] %>% str_trim()
+}
+
+gene_ids <- annotated_quantifiable$cluster_id
+gostrings <- annotated_quantifiable$swissprot_go
+
+geneID2GO <- lapply(gostrings,gostring2vector)
+names(geneID2GO) <- gene_ids
 ```
 
 
-Manual Categories plots
 ```{r}
-DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
-
-# We need to have the element only with the categories that we want
-ThreeCats<- DE_174_database %>% 
-  select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange") %>% 
-  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+get_enrichment <- function(onto,target_set){
+  target_set <- unique(target_set)
+    target_list_membership <- factor(as.integer(gene_ids %in% target_set))
+    names(target_list_membership) <- gene_ids
+    
+    # This maps the GO topology onto your data 
+    GOdata <- new("topGOdata", 
+                  ontology = onto, # This can be BP (Biological Process), MF (Molecular Function), CC (Cellular Compartment)
+                  allGenes = target_list_membership, # Change this to the target list you are interested in
+                  annot = annFUN.gene2GO, 
+                  gene2GO = geneID2GO,
+                  nodeSize = 5) # Leave this as-is
+    
+    # This runs the test to see if there are significantly enriched GO terms
+    resultFis <- runTest(GOdata, algorithm = "weight01", statistic = "fisher")
+    
+    # This extracts test results to a table .. the results actually look quite interesting .. :)
+    gt <- GenTable(GOdata, classic = resultFis,orderBy = "weight", ranksOf = "classic", topNodes = 50)
+    gt %>% filter(Significant>1)
+}
 ```
 
+```{r}
+
+if ( !file.exists("cache/cl_deg_topgo.rds")){
+  all_deg_BP <- get_enrichment("BP",annotated_DEG$cluster_id)
+  all_deg_MF <- get_enrichment("MF",annotated_DEG$cluster_id)
+  all_deg_CC <- get_enrichment("CC",annotated_DEG$cluster_id)
+
+  get_enrichment_clusters <- function(onto){
+    do.call(rbind,lapply(1:5,function(c){
+      get_enrichment(onto,annotated_DEG_hm %>% filter(hm_cluster==c) %>% pull(cluster_id)) %>% add_column(cluster=c)
+    }))
+  }
+
+  cl_deg_BP <- get_enrichment_clusters("BP")
+  cl_deg_MF <- get_enrichment_clusters("MF")
+  cl_deg_CC <- get_enrichment_clusters("CC")
+
+  cl_deg_topgo <- rbind(cl_deg_BP %>% add_column(ontology="BP"),
+        cl_deg_MF %>% add_column(ontology="MF"),
+        cl_deg_CC %>% add_column(ontology="CC"))
+
+  all_deg_topgo <- rbind(all_deg_BP %>% add_column(ontology="BP"),
+        all_deg_MF %>% add_column(ontology="MF"),
+        all_deg_CC %>% add_column(ontology="CC"))
+
+  write_rds(cl_deg_topgo,"cache/cl_deg_topgo.rds")
+  write_rds(all_deg_topgo,"cache/all_deg_topgo.rds")
+} else {
+  cl_deg_topgo <- read_rds("cache/cl_deg_topgo.rds")
+  all_deg_topgo <- read_rds("cache/all_deg_topgo.rds")
+}
+```
+
+At a significance threshold of `p<0.01` we found 8 enriched GO terms (4 in BP, 2 in MF, 2 in CC) using all DEG as the target. By splitting datasets according to heatmap rows this was increased to 14 enriched terms (6 BP, 4MF, 4 CC). These enriched GO terms are driven by a relatively small number of genes (11) with many GO terms forming part of the same (or similar) gene annotation.  
 
 ```{r}
-ComplexUpset::upset(ThreeCats,
-      intersect = c("Sensory.Nervous","Immunity","Cellular.Stress"),
-      base_annotations=list(
-        'Intersection size'=intersection_size(
-            counts=FALSE,
-            aes=aes(fill=updown)
-        )
-      )
-  )
+genes_for_go <- function(goterm){
+  paste(unique(annotated_DEG$cluster_id[grep(annotated_DEG$swissprot_go,pattern=goterm)]),collapse = ";")
+}
+
+add_genes_column <- function(tgdata,pval=0.01){
+  tgdata %>% 
+  filter(classic<pval) %>% 
+  add_column(genes = map_chr(.$GO.ID,genes_for_go)) %>% 
+  separate_rows(genes,sep=";") %>% 
+  left_join(annotated_DEG %>% dplyr::select(cluster_id,Protein_names),by=c("genes"="cluster_id"))
+}
+
+cl_deg_topgo_genes <- cl_deg_topgo %>% add_genes_column()
+all_deg_topgo_genes <- all_deg_topgo %>% add_genes_column()
+```
+
+Aside from GO terms we can also examine enrichment for basic attributes. This reveals that Cluster 5 is massively enriched for secreted proteins (via SignalP).
+
+```{r}
+annotated_DEG_hm %>% 
+  dplyr::select(cluster_id,SignalP,TmHMM,hm_cluster) %>% 
+  pivot_longer(cols = c("SignalP","TmHMM"), names_to = "Attribute") %>% 
+  ggplot(aes(x=hm_cluster)) + 
+  geom_bar(aes(fill=!is.na(value)), position = "fill") + 
+  facet_wrap(~Attribute)
+```
+
+Attempts to find patterns in Kegg Orthology (KO) were fruitless as all annotated proteins have unique values.
+
+```{r}
+annotated_DEG_hm %>% 
+  group_by(Kegg) %>% 
+  summarise(proteins=paste(Protein_names,collapse=";"),count=n()) %>% 
+  arrange(desc(count))
 ```
 
