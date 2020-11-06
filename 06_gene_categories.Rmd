@@ -1,0 +1,105 @@
+---
+title: "Gene function analysis"
+author: "Natalia Andrade and Ira Cooke"
+date: "07/08/2017"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(cache=TRUE)
+options(width = 60)
+
+library(knitr)
+library(DESeq2)
+library(tidyverse)
+library(readxl)
+library(ggrepel)
+library(ggplot2)
+library(cowplot)
+# if(!require(devtools)) install.packages("devtools")
+# devtools::install_github("krassowski/complex-upset")
+
+library(ComplexUpset)
+```
+
+```{r}
+annotated_DEG <- read_tsv("raw_data/annotated_DEG.tsv")
+```
+
+
+```{r}
+# We need to have the element only with the categories that we want
+ThreeCats<- annotated_DEG %>% 
+  dplyr::select("cluster_id", "Sensory-Nervous","Immunity","Cellular.Stress","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+
+ThreeCats_plot<- ComplexUpset::upset(ThreeCats,
+      intersect = c("Sensory-Nervous","Immunity","Cellular.Stress"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
+  )
+```
+
+#CELLULAR.STRESS #IMMUNE RESPONSE TO COMPETITION
+```{r}
+CS_IS<- annotated_DEG %>% 
+  dplyr::select("cluster_id", "Toxins.defense","Apoptosis",'Immune-activation',
+         "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+CS_IS_plot<- ComplexUpset::upset(CS_IS,
+      intersect = c("Toxins.defense","Apoptosis",'Immune-activation',
+         "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
+  )
+```
+
+#NERVOUS SYSTEM AND BEHAVIOUR
+```{r}
+NS_BEH<- annotated_DEG %>% 
+  dplyr::select("cluster_id", "Behaviour","Muscle","GPCRs","Food.related",
+         "Autophagy","Sensory-Nervous","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+NS_BEH_plot<- ComplexUpset::upset(NS_BEH,
+      intersect = c("Behaviour","Muscle","GPCRs","Food.related",
+         "Autophagy","Sensory-Nervous"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
+  )
+```
+
+#In one plot
+```{r}
+plot_grid(ThreeCats_plot,CS_IS_plot, NS_BEH_plot,ncol = 1, 
+          rel_heights = c(0.3,0.3,0.4), 
+          labels = c("A","B","C"),
+          label_x = 0, label_y = 0,
+          hjust = -0.2, vjust = -0.2)
+```
+
