@@ -172,6 +172,7 @@ Manual Categories plots
 ```{r}
 DE_174_database<- read.csv('~/Dropbox/natalia_competition/Porites_competition/gene_function/data/DE_174_database_underEdition2020.csv')
 
+DE_174_database$log2FoldChange <- as.numeric(DE_174_database$log2FoldChange)
 # We need to have the element only with the categories that we want
 ThreeCats<- DE_174_database %>% 
   select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange") %>% 
@@ -180,14 +181,76 @@ ThreeCats<- DE_174_database %>%
 
 
 ```{r}
-ComplexUpset::upset(ThreeCats,
+
+# We need to have the element only with the categories that we want
+ThreeCats<- DE_174_database %>% 
+  select("cluster_id", "Sensory.Nervous","Immunity","Cellular.Stress","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+ThreeCats_plot<- ComplexUpset::upset(ThreeCats,
       intersect = c("Sensory.Nervous","Immunity","Cellular.Stress"),
       base_annotations=list(
         'Intersection size'=intersection_size(
             counts=FALSE,
             aes=aes(fill=updown)
         )
-      )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
   )
+```
+
+#CELLULAR.STRESS #IMMUNE RESPONSE TO COMPETITION
+```{r}
+CS_IS<- DE_174_database %>% 
+  select("cluster_id", "Toxins.defense","Apoptosis",'Immune.activation',
+         "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+CS_IS_plot<- ComplexUpset::upset(CS_IS,
+      intersect = c("Toxins.defense","Apoptosis",'Immune.activation',
+         "Ubiquitination","Mucus","Antioxidants","Immunity","Cellular.Stress"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
+  )
+```
+
+#NERVOUS SYSTEM AND BEHAVIOUR
+```{r}
+NS_BEH<- DE_174_database %>% 
+  select("cluster_id", "Behaviour","Muscle","GPCRs","Food.related",
+         "Autophagy","Sensory.Nervous","log2FoldChange") %>% 
+  mutate(updown = ifelse(log2FoldChange>=0,"up","down"))
+
+NS_BEH_plot<- ComplexUpset::upset(NS_BEH,
+      intersect = c("Behaviour","Muscle","GPCRs","Food.related",
+         "Autophagy","Sensory.Nervous"),
+      base_annotations=list(
+        'Intersection size'=intersection_size(
+            counts=FALSE,
+            aes=aes(fill=updown)
+        )
+      ),
+      keep_empty_groups = FALSE,
+      min_degree = 1,
+      max_size = 25
+  )
+```
+
+#In one plot
+```{r}
+plot_grid(ThreeCats_plot,CS_IS_plot, NS_BEH_plot,ncol = 1, 
+          rel_heights = c(0.3,0.3,0.4), 
+          labels = c("A","B","C"),
+          label_x = 0, label_y = 0,
+          hjust = -0.2, vjust = -0.2)
 ```
 
