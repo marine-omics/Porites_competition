@@ -21,8 +21,7 @@ annotations by choosing the best annotation per cluster.
 Trinotate annotations sometimes include many alternative blast hits per
 transcript or protein. To reduce this down to a single “best” hit per
 sequence we re-parse the raw blastx and blastp data and merge that back
-into the Trinotate
-table.
+into the Trinotate table.
 
 ``` r
 full_trinotate <- read_tsv("hpc/trinotate/trinotate_annotation_report_nogenes.xls", na = ".") %>% 
@@ -88,8 +87,7 @@ genome_blast_data <- read_csv("hpc/Annotation/blast_plutea/GenomeBlast_P.cylindr
 ```
 
 For these high quality matches we then fetch *P lutea* annotations
-(based on a Trinotate
-protocol).
+(based on a Trinotate protocol).
 
 ``` r
 blastx_proteins_lutea<- read.delim("hpc/Annotation/blast_plutea/plut2v1.1.proteins.blastx.outfmt6",header=FALSE,sep="") %>% 
@@ -112,8 +110,7 @@ genome_blast_data_plutea_anno <- blastx_proteins_lutea %>%
 ```
 
 These annotated *P lutea* genes are then joined with the *P. cylindrica*
-annotated transcripts and Interproscan
-annotations
+annotated transcripts and Interproscan annotations
 
 ``` r
 cylindrica_transcriptome_all <- left_join(clean_trinotate,genome_blast_data_plutea_anno,by="transcript_id") %>% 
@@ -143,8 +140,7 @@ will be assigned to Corset clusters but annotation information from
 Trinotate is available for individual transcripts. Although a mapping is
 available at the identifier level we need to reconcile situations where
 multiple annotations are available for a single corset cluster. The
-overall process is as
-follows;
+overall process is as follows;
 
 ``` r
 cluster_data <- read.delim("hpc/corset/03-clusters.txt",stringsAsFactors = FALSE, header = FALSE)
@@ -155,8 +151,7 @@ counts <- read_tsv("hpc/corset/03-counts.txt") %>% dplyr::rename(cluster_id=X1)
 
 Join trinotate annotations and corset clusters based on `transcript_id`.
 The result of this join is that we will now have multiple entries for
-each Corset
-cluster.
+each Corset cluster.
 
 ``` r
 cluster_data_counts <- counts %>% left_join(cluster_data,by="cluster_id")
@@ -196,8 +191,7 @@ ann_cluster_data_scored %>%
 ![](01_annotate_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 If after this there are still entries with equal scores one is simply
-picked at random to ensure one annotation entry per
-cluster.
+picked at random to ensure one annotation entry per cluster.
 
 ``` r
 # Now we pick the row with the top score.  If there are multiple rows with the same score just pick one at random
@@ -231,10 +225,10 @@ reag_ann_cluster_data_bestsp <- reag_ann_cluster_data %>%
 
 #write_tsv(select(reag_ann_cluster_data_bestsp,best_swissprot),"cache/best_swissprot.tsv")
 
-swissprot_results <- readxl::read_excel("raw_data/uniprot-yourlist_M202011038471C63D39733769F8E060B506551E12034541F.xlsx",guess_max = 10000) %>% select(Entry,`Entry name`,`Protein names`,`Gene names`,Organism,Keywords)
+swissprot_results <- readxl::read_excel("raw_data/uniprot-yourlist_M202011038471C63D39733769F8E060B506551E12034541F.xlsx",guess_max = 10000) %>% dplyr::select(Entry,Entry_name=`Entry name`,Protein_names=`Protein names`,Gene_names=`Gene names`,swissprot_go=`Gene ontology IDs`,Organism,Keywords)
 
 
-final_annotated_clusters <- reag_ann_cluster_data_bestsp %>% left_join(swissprot_results,by=c("best_swissprot"="Entry name"))
+final_annotated_clusters <- reag_ann_cluster_data_bestsp %>% left_join(swissprot_results,by=c("best_swissprot"="Entry_name"))
 ```
 
 ``` r

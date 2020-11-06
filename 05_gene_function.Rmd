@@ -121,8 +121,14 @@ vsd2 <- read_rds("cache/vsd2.rds")
 res_ct <- read_rds("cache/res_ct.rds")
 row_kmeans <- read_rds("cache/row_km.rds")
 
-#annotated_DEG %>% add_column(hm_cluster = as.numeric(row_kmeans$cluster)) %>% write_tsv("raw_data/annotated_DEG.tsv")
-annotated_DEG_hm <- annotated_DEG %>% add_column(hm_cluster = as.numeric(row_kmeans$cluster))
+
+if ( !file.exists("raw_data/annotated_DEG.tsv")){
+  annotated_DEG_hm <- annotated_DEG %>% add_column(hm_cluster = as.numeric(row_kmeans$cluster))
+  write_tsv(annotated_DEG_hm,"raw_data/annotated_DEG.tsv")
+} else {
+  annotated_DEG_hm <- read_tsv("raw_data/annotated_DEG.tsv")
+}
+
 
 write_cluster <- function(clnum){
   cluster_ids <- names(which(row_kmeans$cluster==clnum))
@@ -182,6 +188,10 @@ Using GO terms obtained from Swissprot we performed a GO enrichment analysis in 
   2. Separately for each of the five heatmap row clusters
 
 ```{r}
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("topGO")
 library(topGO)
 
 gostring2vector <- function(gostring){
