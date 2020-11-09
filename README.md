@@ -31,4 +31,4 @@ tar -zxvf data.transcriptome.tgz
 - [Gene Annotation](01_annotate.md)
 - [Differential Expression Analysis](02_deseq.md)
 - [Analysis of Polyp Activity Observations](04_polyp_activity.md)
-
+- [Gene Function Analysis](05_gene_function.md)

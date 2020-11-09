@@ -1,12 +1,7 @@
 hpc/corset/03-clusters.txt
 hpc/corset/03-counts.txt
 raw_data/Samples_data.csv
-raw_data/DEG_339_LobophytumComp_20190116.csv
-raw_data/DE_193_database.csv
-raw_data/Lc_LvsPd_all_0.5_exp.txt
-raw_data/Lobo_samples.csv
-raw_data/P.cylindrica_144087anno.rda
 raw_data/Porites_polypact.csv
-raw_data/Samples_data.csv
-raw_data/Samples_data_both.csv
-raw_data/TvsC_193.csv
+raw_data/DE_174_database.xlsx
+raw_data/annotated_DEG.tsv
+raw_data/annotated_clusters_porites.rda

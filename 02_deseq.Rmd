@@ -22,6 +22,7 @@ library(tidyverse)
 library(ggrepel)
 library(ComplexHeatmap)
 library(ggpubr)
+library(circlize)
 library(colorspace)
 ```
 
@@ -44,8 +45,11 @@ sample_data_row_order <- match(colnames(counts),sample_data$ID)
 
 Initial data exploration with PCA revealed that PdLd is an extreme outlier.  We therefore excluded this sample from further analysis
 
-```{r, include=FALSE}
+
+
+```{r, include=FALSE, eval=FALSE}
 dds <- DESeqDataSetFromMatrix(countData = counts,colData=sample_data[sample_data_row_order,],design = ~  treat+ HardCoral)
+
 vsd <- varianceStabilizingTransformation(dds, blind=FALSE)
 
 pca_data <- plotPCA(vsd,intgroup=c("HardCoral","SoftCoralControl"),returnData=TRUE)
@@ -64,13 +68,29 @@ Differential Expression Analysis with the outlier excluded was then performed ba
 
 > ~ 0+HardCoralTrt
 
+One issue with the above analysis is that it estimates a separate value for each of the control samples, meaning that each such estimate will be done without replicates. Perhaps a better model to capture this experiment would be to estimate a treatment effect, a hard coral effect, and their interaction
+
+
+
+
 ```{r}
 counts2 <- data.frame(counts) %>% select(-PdLd) %>% as.matrix()
 
-sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),] %>% 
-  unite("HardCoralTrt",HardCoral,treat,remove = FALSE)
+sample_data2 <- sample_data[match(colnames(counts2),sample_data$ID),] %>%
+  unite("HardCoralTrt",HardCoral,treat,remove = FALSE) %>% 
+  mutate(HardCoralTrt = ifelse(ID %in% c("PfC","PdC"),"C",HardCoralTrt))
 
-dds2 <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  0+HardCoralTrt)
+
+dds2_raw <- DESeqDataSetFromMatrix(countData = counts2,colData=sample_data2,design = ~  0+HardCoralTrt)
+# Exclude samples where one of the controls (but not both) have zero counts
+# This is because;
+# A. Cook's distance filtering doesn't work for factors with 2 replicates
+# B. If only one of the controls is 0 then it will be an outlier. But if they both are we will assume this is consistent low counts
+#
+keep <- rowSums(counts(dds2_raw)[,c("PfC","PdC")]<5) != 1
+
+dds2 <- dds2_raw[keep,]
+
 
 if (file.exists("cache/dds2.rds")) {
     dds2 <- read_rds("cache/dds2.rds")
@@ -107,27 +127,28 @@ To set up contrasts we first use `resultsNames()` to extract a list of fitted co
 resultsNames(dds2)
 ```
 
-Based on this the following contrasts are potentially interesting, but we will primarily focus on `contrast_ct` only.
+Based on this the following contrast should highlight genes consistently different between control and treatment
 
-1. `contrast_ct <- c(1,-1,1,-1)` which captures genes consistently different between treatment and control across both Porites colonies
-2. `contrast_pd <- c(1,-1,0,0)` capturing genes DE between treatment and control for `Pd` only
-3. `contrast_pf <- c(0,0,1,-1)` capturing genes DE between treatment and control for `Pf` only
-
+`contrast_ct <- c(1,-0.5,-0.5)` which captures genes consistently different between treatment and control across both Porites colonies
 
 ```{r}
-#HardCoralTrtPd_C" "HardCoralTrtPd_T" "HardCoralTrtPf_C" "HardCoralTrtPf_T"
-
-# This contrast gives genes consistently DE between treatment and control
- res_ct <- results(dds2,contrast = list(c("HardCoralTrtPd_C","HardCoralTrtPf_C"),c("HardCoralTrtPd_T","HardCoralTrtPf_T")),listValues=c(1/2,
+res_ct <- results(dds2,contrast = list(c("HardCoralTrtC"),c("HardCoralTrtPd_T","HardCoralTrtPf_T")),listValues=c(1,
  -1/2), tidy = TRUE) %>% 
   arrange(padj) %>% 
   filter(padj<0.1)
+
+quantifiable_clusters <- results(dds2,contrast = list(c("HardCoralTrtC"),c("HardCoralTrtPd_T","HardCoralTrtPf_T")),listValues=c(1,
+ -1/2), tidy = TRUE) %>% 
+  filter(!is.na(padj)) %>% 
+  select(cluster_id=row)
+
 ```
 
 
 ```{r, eval=FALSE}
-# This is to support later analysis that combines DE results alongside functional groupings and/or polyp activity.
+# This is to support later analysis that draws on the DE results
 write_rds(res_ct,"cache/res_ct.rds")
+write_rds(quantifiable_clusters,"cache/quantifiable_clusters.rds")
 write_rds(vsd2,"cache/vsd2.rds")
 write_rds(pca_data2,"cache/pca_data2.rds")
 ```
@@ -153,19 +174,99 @@ ct_genes_tidy %>%
   facet_wrap(~cluster_id,ncol = 3,scales = "free_y")
 ```
 
-Now a heatmap for all the DE genes between treatment and control. For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful. The clusters reveal some interesting patterns in terms of samples (matching the PCA) and in terms of genes (identifying alternative types of molecular response to competition).  We explore this further in conjunction with the Polyp Activity data in `04_polyp_activity.Rmd`.
+Now a heatmap for all the DE genes between treatment and control. For this the relative change in expression is plotted (relative to the mean for a gene) so that clustering is meaningful. The clusters reveal some interesting patterns in terms of samples (matching the PCA) and in terms of genes (identifying alternative types of molecular response to competition).  
 
 
 ```{r}
+# PCA Plot
+#
+hm_col_groups <- list(blue = c("PdLb","PfLd","PfLa"), grey = c("PdC","PfC"),white=c("PdLc","PfLe","PfLb"), red = c("PdLe","PdLa","PfLc"))
+
+pca_data3 <- pca_data2 %>% 
+  mutate(colgroup = "grey") %>% 
+  mutate(colgroup = ifelse(name %in% hm_col_groups$red,"red",colgroup)) %>% 
+  mutate(colgroup = ifelse(name %in% hm_col_groups$white,"white",colgroup)) %>% 
+  mutate(colgroup = ifelse(name %in% hm_col_groups$blue,"blue",colgroup)) 
+
+#diverging_hcl(5, palette = "Blue-Red 2")
+#"#4A6FE3" "#9DA8E2" "#E2E2E2" "#E495A5" "#D33F6A"
+colgroup_colors <- c(blue="#4A6FE3",white="#9DA8E2", grey="#E2E2E2", red="#D33F6A")
+
+pca_plot <- pca_data3 %>% 
+  ggplot(aes(y=PC1,x=PC2)) + 
+  geom_point(aes(shape=HardCoral, fill=colgroup),size=4) + 
+#  geom_point(aes(x=-1,y=PC2, color=colgroup),size=4)+
+  geom_label_repel(aes(label=name),point.padding = unit(0.2,"cm"))  + 
+  ylab(paste0("PC1: ",percentVar2[1],"% variance")) + 
+  xlab(paste0("PC2: ",percentVar2[2],"% variance"))  +  
+  scale_fill_manual(values=colgroup_colors) +
+  scale_shape_manual(values=c("Pd"=22,"Pf"=24))+
+#  scale_color_discrete_qualitative(palette = "Dark 3") +
+  theme(text = element_text(size=20)) + 
+  theme_pubr() +
+  guides(fill=FALSE,col=FALSE) +
+  theme(legend.position = "right", legend.title = element_blank())
+pca_plot
+```
+
+
+```{r}
+# Heatmap
+#
+
+ct_genes_tidy <- assay(vsd2)[res_ct$row,] %>%
+  as.data.frame() %>%
+  rownames_to_column("cluster_id")
+
 ct_heatmap_data <- ct_genes_tidy %>%
   as.data.frame() %>%
   column_to_rownames("cluster_id")
 
-ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data))
+ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data)) %>% as.matrix()
 
-colgroup_colours <- qualitative_hcl(3, palette = "Dark 3")
+# Perform kmeans clustering and save the result in cache.
+# There is some randomness in this so we save it for consistency
+# This also allows transcripts within cluster to be extracted in later scripts
+#
+if ( file.exists("cache/row_km.rds") & file.exists("cache/col_km.rds")){
+ col_kmeans <- read_rds("cache/col_km.rds")
+ row_kmeans <- read_rds("cache/row_km.rds")
+} else {
 
-Heatmap(ct_heatmap_data_relative, column_km = 3, row_km = 6, show_row_names = FALSE,column_title_gp = gpar(fill = colgroup_colours, font = 1:3))
+  row_kmeans <- kmeans(ct_heatmap_data_relative,centers = 5,nstart = 100)
+  col_kmeans <- kmeans(t(ct_heatmap_data_relative), centers = 4, nstart = 100)
+
+  write_rds(row_kmeans,"cache/row_km.rds")
+  write_rds(col_kmeans,"cache/col_km.rds")
+}
+
+col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+hm <- Heatmap(ct_heatmap_data_relative, 
+                                      col = col_fun,
+#                                      column_km_repeats = 3,
+                                      # row_km_repeats = 100,
+                                      column_split = factor(col_kmeans$cluster,levels = c(1,4,3,2)),
+                                      cluster_column_slices = FALSE,
+                                      row_split = row_kmeans$cluster,
+                                      show_row_dend = FALSE,
+                                      show_row_names = FALSE,
+                                      show_column_dend = FALSE,
+                                      column_title_gp = gpar(fill = colgroup_colors[c(1,3,2,4)]),
+                                      heatmap_legend_param = list(title="LogFC", legend_width = unit(10,"cm")))
+
+hm_plot <- grid.grabExpr(draw(hm))
+
+plot_grid(pca_plot ,
+          hm_plot ,
+          ncol = 1, 
+          rel_heights = c(0.4,0.6), 
+          labels = c("A","B"),
+          label_x = 0, label_y = 0,
+          hjust = -0.5, vjust = -0.5)
+
+ggsave2("figures/pca_hm.png", width = 12,height = 10)
 ```
+
+
 
 
