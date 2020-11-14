@@ -63,7 +63,7 @@ ct_res_ntd2 <- counts(dds2, normalized=TRUE)[res_ct$row,] %>%
 # Transcriptome annotation 
 # We select key columns here for readability
 automatic_annotations <- read_rds("raw_data/annotated_clusters_porites.rda") %>% 
-  select(cluster_id,transcript_id,RNAMMER,Pfam,SignalP,TmHMM,eggnog,Kegg,ipro_pfam,ipro_pfam_desc,ipr_go,best_swissprot,Entry,Protein_names,Gene_names,Organism,Keywords,swissprot_go)
+  select(cluster_id,transcript_id,RNAMMER,Pfam,SignalP,TmHMM,eggnog,Kegg,ipro_pfam,ipro_pfam_desc,ipr_go,best_swissprot,Entry,Protein_names,Gene_names,Organism,Keywords,swissprot_go,plutea_id)
 
 colnames_to_exclude <- colnames(automatic_annotations)[-1]
 
@@ -128,8 +128,20 @@ if ( !file.exists("raw_data/annotated_DEG.tsv")){
 } else {
   annotated_DEG_hm <- read_tsv("raw_data/annotated_DEG.tsv")
 }
+```
 
 
+```{r}
+# Join with old cluster data
+annotated_DEG_barnacles <- readxl::read_excel("raw_data/annotated_DEG.xlsx")
+
+annotated_DEG_hm_ira <- annotated_DEG_hm %>% select(cluster_id, hm_cluster) %>% left_join(annotated_DEG_barnacles,by="cluster_id")
+
+write_tsv(annotated_DEG_hm_ira,"raw_data/annotated_DEG_hm_ira.tsv")
+```
+
+
+```{r}
 write_cluster <- function(clnum){
   cluster_ids <- names(which(row_kmeans$cluster==clnum))
   DE_cl <- annotated_DEG %>% filter(cluster_id %in% cluster_ids)
