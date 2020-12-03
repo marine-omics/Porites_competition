@@ -6,8 +6,16 @@ Natalia Andrade and Ira Cooke
 Counts obtained from Corset were analysed with DESeq to identify
 differentially expressed genes between HardCoral treatments.
 
+Next we identify cluster ids that correspond to Symbiont or Barnacle
+transcripts
+
 Initial data exploration with PCA revealed that PdLd is an extreme
-outlier. We therefore excluded this sample from further analysis
+outlier. We therefore excluded this sample from further analysis. We
+also can see from the Barnacle counts that these were heavily
+concentrated in three samples suggesting that only these three samples
+were infected with coral-inhabiting barnacles.
+
+![](02_deseq_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 Differential Expression Analysis with the outlier excluded was then
 performed based on a model with no intercept and a separate coefficient
@@ -30,13 +38,12 @@ source of variation in the data, accounting for 89%. PC2 accounts for
 just 5% of variation and captures differences due to the competing
 Lobophytum colony and whether competition exists at all (Control).
 
-![](02_deseq_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](02_deseq_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 To set up contrasts we first use `resultsNames()` to extract a list of
 fitted coefficients in the model
 
-    ## [1] "HardCoralTrtPd_C" "HardCoralTrtPd_T" "HardCoralTrtPf_C"
-    ## [4] "HardCoralTrtPf_T"
+    ## [1] "HardCoralTrtC"    "HardCoralTrtPd_T" "HardCoralTrtPf_T"
 
 Based on this the following contrast should highlight genes consistently
 different between control and treatment
@@ -48,7 +55,7 @@ For the top genes differentially expressed between control and treatment
 scatterplots of the raw data provide a useful check that the statistical
 analysis identifies genuine differentially expressed transcripts.
 
-![](02_deseq_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](02_deseq_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 Now a heatmap for all the DE genes between treatment and control. For
 this the relative change in expression is plotted (relative to the mean
@@ -57,6 +64,6 @@ interesting patterns in terms of samples (matching the PCA) and in terms
 of genes (identifying alternative types of molecular response to
 competition).
 
-![](02_deseq_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+    ## [1] "#4A6FE3" "#9DA8E2" "#E2E2E2" "#E495A5" "#D33F6A"
 
-![](02_deseq_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](02_deseq_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->

@@ -1,0 +1,55 @@
+---
+title: "Kraken analysis"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+```
+
+```{r}
+sample_data_raw <- read_csv("raw_data/Samples_data.csv",trim_ws = TRUE) %>% 
+  unite("sample",HardCoral,Tanks,remove = FALSE)
+
+genome_mpa31_files <- list.files("hpc/kraken/kraken_mpa/",pattern = "*.mpa",full.names = TRUE)
+
+read_mpa <- function(path){
+  s <- basename(path) %>% str_extract("[^\\.]+")
+  mpa_data <- read_tsv(path,col_names = c("taxonomy","read_count"),col_types = cols()) %>% 
+    add_column(sample=s) 
+  mpa_data
+}
+
+genome_mpa31_data <- do.call(rbind,lapply(genome_mpa31_files,read_mpa)) %>% add_column(kmer="g31")
+
+mpa_data <- genome_mpa31_data 
+```
+
+
+```{r}
+clade_names <- c("A"="Symbiodinium","B"="Breviolum","C"="Cladocopium","D"="Durusdinium","F"="Fugacium","Host"="Porites")
+
+symbiodinium_data <- mpa_data %>% 
+  filter(grepl(pattern = "Symbiodinium_sp_clade",taxonomy) | 
+           grepl( pattern = "Porites_lutea", taxonomy)) %>% 
+  mutate(clade = str_match(taxonomy,pattern = "clade_([ABCDF])")[,2]) %>% 
+  mutate(clade = ifelse(is.na(clade),"Host",clade)) %>% 
+  mutate(clade_name = clade_names[clade]) %>% 
+#  mutate(clade_name = ifelse(is.na(clade_name),"Porites",clade_name)) %>% 
+  left_join(sample_data_raw)
+```
+
+Plot by absolute read counts
+
+```{r}
+library(ggrepel)
+library(ggpubr)
+
+ggplot(symbiodinium_data ,aes(x=ID,y=read_count/1e6)) + 
+  geom_col(aes(fill=reorder(clade_name, read_count))) +  theme_pubclean() +
+  xlab("") + ylab("Read Count (Millions)") + 
+  theme(axis.text.x = element_text(angle=90), axis.ticks.x = element_blank(), legend.title = element_blank(), legend.position = "right")
+```
+
