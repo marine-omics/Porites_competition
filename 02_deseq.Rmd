@@ -42,7 +42,6 @@ colnames(sample_data) <- c("ID","Tank","HardCoral",'treat',"SoftCoralControl","P
 sample_data_row_order <- match(colnames(counts),sample_data$ID)
 ```
 
-Next we identify cluster ids that correspond to Symbiont or Barnacle transcripts
 
 ```{r}
 clusters <- read_tsv("hpc/corset/03-clusters.txt",col_names = c("transcript_id","cluster_id"))
@@ -54,6 +53,8 @@ barnacle_clusters <- clusters %>% filter(transcript_id %in% barnacle_transcripts
 counts_plut <- counts[which(!(rownames(counts) %in% symb_barnacle_clusters$cluster_id)),]
 counts_barnacle <- counts[which((rownames(counts) %in% barnacle_clusters$cluster_id)),]
 ```
+
+Next we identify cluster ids that correspond to Symbiont or Barnacle transcripts.  A total of `r barnacle_transcripts %>% nrow()` barnacle transcripts from `r nrow(barnacle_clusters)` were excluded as a result.
 
 Initial data exploration with PCA revealed that PdLd is an extreme outlier.  We therefore excluded this sample from further analysis. We also can see from the Barnacle counts that these were heavily concentrated in three samples suggesting that only these three samples were infected with coral-inhabiting barnacles.
 
@@ -198,7 +199,7 @@ Now a heatmap for all the DE genes between treatment and control. For this the r
 ```{r}
 # PCA Plot
 #
-hm_col_groups <- list(blue = c("PdLb","PfLd","PfLa"), grey = c("PdC","PfC"),white=c("PdLc","PfLe","PfLb"), red = c("PdLe","PdLa","PfLc"))
+hm_col_groups <- list(blue = c("PdLb","PfLd","PfLa"), grey = c("PdC","PfC"),white=c("PfLc","PfLe","PfLb"), red = c("PdLe","PdLa","PdLc"))
 
 pca_data3 <- pca_data2 %>% 
   mutate(colgroup = "grey") %>% 
@@ -226,6 +227,17 @@ pca_plot <- pca_data3 %>%
   guides(fill=FALSE,col=FALSE) +
   theme(legend.position = "right", legend.title = element_blank())
 ```
+```{r}
+library(ampir)
+
+rd <- readxl::read_excel("raw_data/annotated_DEG_hm_ira.xlsx",na = "NA") %>% 
+  select(cluster_id,peptide) %>% 
+  filter(peptide!=".") %>% 
+  filter(!is.na(peptide)) %>% 
+  mutate(peptide=str_replace(peptide,pattern="\\*",""))
+
+rdp <- predict_amps(rd) %>% filter(prob_AMP>0.8)
+```
 
 
 ```{r}
@@ -249,24 +261,21 @@ mesenteries_data <- readxl::read_excel("raw_data/Mesentries Obsv_Bothcorals.xlsx
   filter(HARD %in% c("Pa","Pc")) %>% 
   mutate(HARD = ifelse(HARD=="Pa","Pd","Pf"))
 
-mesenteries_groups <- mesenteries_data %>% unite("pair",HARD,Softies,sep="") %>% pull(pair) %>% unique()
+
+# You can eliminate the grey bar on PCA for:  PdLc , PfLe and PfLd.
+mesenteries_groups <- mesenteries_data %>% 
+  unite("pair",HARD,Softies,sep="") %>%
+  filter(!(pair %in% c("PdLc","PfLe","PfLd"))) %>% 
+  pull(pair) %>% unique()
 
 
 ct_heatmap_data_relative <- sweep(ct_heatmap_data, MARGIN=1, STATS= rowMeans(ct_heatmap_data)) %>% as.matrix()
 
 row_anno_data <- readxl::read_excel("raw_data/annotated_DEG_hm_ira.xlsx",na = "NA") %>% 
   mutate(Secreted = ifelse(!is.na(secreted),"SE","FALSE")) %>% 
-  mutate(Immunity = ifelse(!is.na(`immune response`),"I","FALSE")) %>% 
-  mutate(Stress = ifelse(!is.na(`ROS stress`) | !is.na(`unfolded protein response`),"SR","FALSE")) %>% 
-  mutate(StressType = ifelse(!is.na(`ROS stress`),"ROS",NA)) %>% 
-  mutate(StressType = ifelse(!is.na(`unfolded protein response`),"UPR",StressType)) %>%   
-  mutate(CellCell = ifelse(!is.na(`cell-cell interactions`),"CC","FALSE")) %>%   
-  mutate(Apoptosis = ifelse(!is.na(apoptosis),"A","FALSE")) %>% 
-  mutate(Toxin = ifelse(!is.na(toxin),"T","FALSE")) %>% 
-  mutate(GPCR = ifelse(!is.na(GPCR),"G","FALSE")) %>% 
-      select(cluster_id,Secreted,Immunity,Stress,CellCell,Apoptosis,Toxin,GPCR,log2FoldChange,evidence_level,StressType,display_name) %>% as.data.frame()
+  select(cluster_id,Secreted,log2FoldChange,evidence_level,display_name) %>% as.data.frame()
 
-write_rds(row_anno_data,"cache/row_anno_data.rds")
+#write_rds(row_anno_data,"cache/row_anno_data.rds")
 
 col_anno_data <- data.frame(Mesenteries = colnames(ct_heatmap_data_relative) %in% mesenteries_groups)
 

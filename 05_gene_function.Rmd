@@ -116,24 +116,39 @@ plot_genes(top_genes)
 
 
 ```{r}
-row_anno_data <- read_rds("cache/row_anno_data.rds")
+#row_anno_data <- read_rds("cache/row_anno_data.rds")
+row_anno_data <- readxl::read_excel("raw_data/annotated_DEG_hm_ira.xlsx",na = "NA") %>% 
+  mutate(Secreted = ifelse(!is.na(secreted),"SE","FALSE")) %>% 
+  mutate(Immunity = ifelse(!is.na(`immune response`),"I","FALSE")) %>% 
+  mutate(Immunity_CellCell_Apoptosis = ifelse(!is.na(`immune response`) | !is.na(apoptosis) | !is.na(`cell-cell interactions`),"ICA","FALSE")) %>% 
+  mutate(Stress = ifelse(!is.na(`ROS stress`) | !is.na(`unfolded protein response`),"SR","FALSE")) %>% 
+  mutate(StressType = ifelse(!is.na(`ROS stress`),"ROS",NA)) %>% 
+  mutate(StressType = ifelse(!is.na(`unfolded protein response`),"UPR",StressType)) %>%   
+  mutate(CellCell = ifelse(!is.na(`cell-cell interactions`),"CC","FALSE")) %>%   
+  mutate(Apoptosis = ifelse(!is.na(apoptosis),"A","FALSE")) %>% 
+  mutate(Toxin = ifelse(!is.na(toxin),"T","FALSE")) %>% 
+  mutate(GPCR = ifelse(!is.na(GPCR),"G","FALSE")) %>% 
+      select(cluster_id,Secreted,Immunity=Immunity_CellCell_Apoptosis,Toxin,Stress,log2FoldChange,evidence_level,StressType,display_name) %>% as.data.frame()
 
 fanno_data <- row_anno_data %>% 
   arrange(log2FoldChange) %>% 
   mutate(rank=-(row_number()-40)) %>% 
   pivot_longer(!any_of(c("cluster_id","log2FoldChange","rank","evidence_level","Toxin","StressType","display_name"))) %>% 
   filter(value!=FALSE) %>% 
-  filter(name %in% c("Secreted","Immunity","CellCell", "Stress"))
+  filter(name %in% c("Secreted","Immunity", "Stress"))
+fanno_data[(fanno_data$name=="Secreted") & (fanno_data$evidence_level>1),'display_name'] <- ""
+fanno_data$name <- factor(fanno_data$name,levels=c("Secreted","Immunity","Stress"))
 
-fanno_data$name <- factor(fanno_data$name,levels=c("Secreted","Stress","Immunity","CellCell"))
+fanno_data_toxins <- fanno_data %>% filter(Toxin=="T")
 
 fanno_data %>% 
-  filter(name!="Secreted") %>% 
   ggplot(aes(x=name,y=rank)) + 
   geom_hline(yintercept = 0) +
   geom_violin(aes(fill=name)) +
   geom_point(size=3,color="black") + guides(fill=FALSE) +
+  geom_point(data=fanno_data_toxins,size=3,color="blue") +
   geom_label_repel(aes(label=display_name),size=5) +
+  coord_flip() +
   xlab("") + ylab("Relative Rank") +
   theme_pubclean()
 

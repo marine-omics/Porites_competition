@@ -29,14 +29,15 @@ mpa_data <- genome_mpa31_data
 
 
 ```{r}
-clade_names <- c("A"="Symbiodinium","B"="Breviolum","C"="Cladocopium","D"="Durusdinium","F"="Fugacium","Host"="Porites")
+clade_names <- c("A"="Symbiodinium","B"="Breviolum","C"="Cladocopium","D"="Durusdinium","F"="Fugacium","Host"="Porites", "Barnacle"="Barnacle")
 
 symbiodinium_data <- mpa_data %>% 
   filter(grepl(pattern = "Symbiodinium_sp_clade",taxonomy) | 
-           grepl( pattern = "Porites_lutea", taxonomy)) %>% 
+           grepl( pattern = "o__Scleractinia", taxonomy) | grepl( pattern = "Balanidae", taxonomy)) %>% 
   mutate(clade = str_match(taxonomy,pattern = "clade_([ABCDF])")[,2]) %>% 
-  mutate(clade = ifelse(is.na(clade),"Host",clade)) %>% 
-  mutate(clade_name = clade_names[clade]) %>% 
+  mutate(clade = ifelse(grepl( pattern = "o__Scleractinia", taxonomy),"Host",clade)) %>% 
+  mutate(clade = ifelse(grepl( pattern = "Balanidae", taxonomy),"Barnacle",clade)) %>% 
+    mutate(clade_name = clade_names[clade]) %>% 
 #  mutate(clade_name = ifelse(is.na(clade_name),"Porites",clade_name)) %>% 
   left_join(sample_data_raw)
 ```
