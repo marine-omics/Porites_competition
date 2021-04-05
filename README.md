@@ -1,3 +1,7 @@
+## Deprecated ... 
+
+See [China2302](http://github.com/china2302/Porites_competition) which is the published version
+
 # Porites_competition
 
 ## Using this repository
